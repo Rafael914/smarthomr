@@ -1,0 +1,131 @@
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { calcActiveUsage } from '../utils/energyUtils';
+
+const API = 'http://192.168.137.1:8000';
+const OUTLETS = [1, 2, 3];
+
+export default function DashboardScreen() {
+  const [summaries, setSummaries] = useState([]);
+  const [rate, setRate] = useState(12.5);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAll();
+  }, []);
+
+  async function fetchAll() {
+    setLoading(true);
+    try {
+      // Fetch rate
+      const rateRes = await fetch(`${API}/api/rate`);
+      const rateData = await rateRes.json();
+      const currentRate = rateData.price_per_kwh ?? 12.5;
+      setRate(currentRate);
+
+      // Fetch history for each outlet and compute active usage
+      const results = await Promise.all(
+        OUTLETS.map(async id => {
+          const res = await fetch(`${API}/api/readings/${id}/history?limit=500`);
+          const json = await res.json();
+          const { totalKwh, sessions } = calcActiveUsage(json.data ?? []);
+          return {
+            outlet_id: id,
+            totalKwh,
+            totalCost: parseFloat((totalKwh * currentRate).toFixed(2)),
+            sessions,
+            activeHours: sessions.reduce((s, sess) => s + sess.durationHours, 0).toFixed(2),
+          };
+        })
+      );
+      setSummaries(results);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) return <ActivityIndicator style={{ flex: 1 }} />;
+
+  const grandTotalKwh = summaries.reduce((s, o) => s + o.totalKwh, 0).toFixed(4);
+  const grandTotalCost = summaries.reduce((s, o) => s + o.totalCost, 0).toFixed(2);
+
+  return (
+    <ScrollView style={styles.container}>
+      {/* Grand total card */}
+      <View style={styles.totalCard}>
+        <Text style={styles.totalLabel}>Total active usage today</Text>
+        <Text style={styles.totalKwh}>{grandTotalKwh} kWh</Text>
+        <Text style={styles.totalCost}>₱{grandTotalCost}</Text>
+        <Text style={styles.rateNote}>Rate: ₱{rate}/kWh</Text>
+      </View>
+
+      {/* Per-outlet cards */}
+      {summaries.map(outlet => (
+        <View key={outlet.outlet_id} style={styles.card}>
+          <Text style={styles.outletTitle}>Outlet {outlet.outlet_id}</Text>
+
+          <View style={styles.row}>
+            <Stat label="Active kWh" value={`${outlet.totalKwh} kWh`} />
+            <Stat label="Cost" value={`₱${outlet.totalCost}`} />
+            <Stat label="Hours ON" value={`${outlet.activeHours} h`} />
+          </View>
+
+          {/* Session breakdown */}
+          {outlet.sessions.length > 0 && (
+            <View style={styles.sessions}>
+              <Text style={styles.sessionsTitle}>Sessions</Text>
+              {outlet.sessions.map((sess, i) => (
+                <View key={i} style={styles.sessionRow}>
+                  <Text style={styles.sessionText}>
+                    {new Date(sess.start).toLocaleTimeString()} →{' '}
+                    {new Date(sess.end).toLocaleTimeString()}
+                  </Text>
+                  <Text style={styles.sessionStat}>
+                    {sess.kwh} kWh · {sess.durationHours}h
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
+function Stat({ label, value }) {
+  return (
+    <View style={styles.stat}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f5f5f5', padding: 16 },
+  totalCard: {
+    backgroundColor: '#1a1a2e', borderRadius: 16, padding: 20,
+    marginBottom: 16, alignItems: 'center',
+  },
+  totalLabel: { color: '#aaa', fontSize: 13 },
+  totalKwh:   { color: '#fff', fontSize: 32, fontWeight: '700', marginTop: 4 },
+  totalCost:  { color: '#f0c040', fontSize: 22, fontWeight: '600' },
+  rateNote:   { color: '#888', fontSize: 12, marginTop: 4 },
+  card: {
+    backgroundColor: '#fff', borderRadius: 12, padding: 16,
+    marginBottom: 12, elevation: 2,
+  },
+  outletTitle: { fontSize: 16, fontWeight: '600', marginBottom: 12 },
+  row:  { flexDirection: 'row', justifyContent: 'space-around' },
+  stat: { alignItems: 'center' },
+  statValue: { fontSize: 18, fontWeight: '700', color: '#333' },
+  statLabel: { fontSize: 11, color: '#888', marginTop: 2 },
+  sessions:      { marginTop: 14, borderTopWidth: 1, borderTopColor: '#eee', paddingTop: 10 },
+  sessionsTitle: { fontSize: 12, color: '#888', marginBottom: 6 },
+  sessionRow:    { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 },
+  sessionText:   { fontSize: 12, color: '#555' },
+  sessionStat:   { fontSize: 12, fontWeight: '600', color: '#333' },
+});
