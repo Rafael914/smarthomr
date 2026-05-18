@@ -2,17 +2,32 @@ import bcrypt from "bcryptjs";
 import { sql } from "../config/db.js";
 import jwt from "jsonwebtoken";
 
-
+// ==========================================
+// 1. REGISTER CONTROLLER
+// ==========================================
 export const registerUser = async (req, res) => {
-  const { name, email, phoneNumber, password } = req.body;
+  const { name, email, password } = req.body; // Removed phoneNumber since it's not in your database
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: "All fields are required." });
+  }
 
   try {
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check if user already exists
+    const userExist = await sql`SELECT * FROM users WHERE email = ${cleanEmail}`;
+    if (userExist.length > 0) {
+      return res.status(400).json({ message: "User already exists with this email." });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // FIXED: Using username and password_hash to match your Neon schema columns
     const result = await sql`
-      INSERT INTO users (name, email, phoneNumber, password)
-      VALUES (${name}, ${email}, ${phoneNumber}, ${hashedPassword})
-      RETURNING id, name, email, phoneNumber
+      INSERT INTO users (username, email, password_hash)
+      VALUES (${name}, ${cleanEmail}, ${hashedPassword})
+      RETURNING id, username, email
     `;
 
     res.status(201).json({
@@ -21,35 +36,38 @@ export const registerUser = async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Database Registration Error:", error);
     res.status(500).json({ message: "Registration failed" });
   }
 };
 
+// ==========================================
+// 2. LOGIN CONTROLLER
+// ==========================================
 export const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    const cleanEmail = email.trim().toLowerCase();
+
     const user = await sql`
-      SELECT * FROM users WHERE email = ${email}
+      SELECT * FROM users WHERE email = ${cleanEmail}
     `;
 
     if (!user[0]) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const isMatch = await bcrypt.compare(password, user[0].password);
+    // FIXED: Checking user[0].password_hash instead of .password
+    const isMatch = await bcrypt.compare(password, user[0].password_hash);
 
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const token = jwt.sign(
-      {
-        id: user[0].id,
-        email: user[0].email
-      },
-      "secret_key",
+      { id: user[0].id, email: user[0].email },
+      process.env.JWT_SECRET || "secret_key",
       { expiresIn: "1d" }
     );
 
@@ -58,17 +76,20 @@ export const loginUser = async (req, res) => {
       token,
       user: {
         id: user[0].id,
-        name: user[0].name,
+        name: user[0].username, // FIXED: Mapping username to name for frontend consistency
         email: user[0].email
       }
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("Database Login Error:", error);
     res.status(500).json({ message: "Login failed" });
   }
 };
 
+// ==========================================
+// 3. MIDDLEWARE & COMPONENT CONTROLLERS
+// ==========================================
 export const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
@@ -79,7 +100,7 @@ export const verifyToken = (req, res, next) => {
   const token = authHeader.split(" ")[1];
 
   try {
-    const decoded = jwt.verify(token, "secret_key");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "secret_key");
     req.user = decoded;
     next();
   } catch (error) {
@@ -87,12 +108,11 @@ export const verifyToken = (req, res, next) => {
   }
 };
 
-import { sql } from "../config/db.js";
-
 export const getCurrentUser = async (req, res) => {
   try {
+    // FIXED: Querying username instead of name or phoneNumber
     const user = await sql`
-      SELECT id, name, email, phoneNumber
+      SELECT id, username, email
       FROM users
       WHERE id = ${req.user.id}
     `;

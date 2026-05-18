@@ -12,3 +12,4 @@ if (!PGHOST || !PGDATABASE || !PGUSER || !PGPASSWORD) {
 export const sql = neon(
   `postgresql://${PGUSER}:${PGPASSWORD}@${PGHOST}/${PGDATABASE}?sslmode=require`
 );
+

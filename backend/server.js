@@ -10,6 +10,7 @@ import relayRoutes from "./routes/relayRoutes.js";
 import pzemRoutes from "./routes/pzemRoutes.js"
 // import { aj } from "./lib/arcjet.js";
 import { sql } from "./config/db.js";
+import authRoutes from './routes/authRoutes.js'
 
 // ========================
 // LOAD ENV FIRST
@@ -63,7 +64,7 @@ app.use(morgan("dev"));
 
 app.use("/api/relay", relayRoutes);
 app.use("/api/pzem", pzemRoutes);
-
+app.use('/api/auth', authRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "Smart Home Backend is running 🚀" });
@@ -79,6 +80,6 @@ async function initDB() {
 // ========================
 initDB().then(() => {
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 Server running at: http://192.168.137.1:8000:${PORT}`);
+    console.log(`🚀 Server running at: http://192.168.137.1:${PORT}`);
   });
 });

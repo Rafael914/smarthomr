@@ -9,7 +9,7 @@ import {
 import axios from 'axios';
 
 
-const BASE_URL = "http://192.168.1.5:8000";
+const BASE_URL = "http://192.168.137.1:8000";
 
 function BluePrint() {
 

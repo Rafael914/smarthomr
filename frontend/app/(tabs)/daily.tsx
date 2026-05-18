@@ -6,7 +6,7 @@ function daily() {
 
 
     <View>
-      Hotdog
+      <Text>hotdog</Text>
     </View>
   )
 }
