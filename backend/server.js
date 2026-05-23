@@ -79,6 +79,6 @@ async function initDB() {
 // ========================
 initDB().then(() => {
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🚀 Server running at: http://192.168.137.1:8000:${PORT}`);
+    console.log(`🚀 Server running at: http://192.168.137.1:${PORT}`);
   });
 });

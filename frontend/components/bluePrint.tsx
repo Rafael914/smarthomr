@@ -7,9 +7,8 @@ import {
 } from 'react-native';
 
 import axios from 'axios';
+const BASE_URL = "http://192.168.1.64:8000";
 
-
-const BASE_URL = "http://192.168.1.5:8000";
 
 function BluePrint() {
 
@@ -18,50 +17,52 @@ function BluePrint() {
   const [relay3, setRelay3] = useState(false);
   const [relay4, setRelay4] = useState(false);
 
-
+  // FETCH STATUS FROM SERVER
   const fetchRelay = async () => {
     try {
-
-      const res = await axios.get(
-        `${BASE_URL}/api/relay`
-      );
-
-      const relayData = res.data.data;
-
-      if (relayData) {
-        setRelay1(relayData.relay1);
-        setRelay2(relayData.relay2);
-        setRelay3(relayData.relay3);
-        setRelay4(relayData.relay4);
-      }
-
+      const res = await axios.get(`${BASE_URL}/api/relay`);
+      const relayData = res.data;
+      setRelay1(relayData.relay1);
+      setRelay2(relayData.relay2);
+      setRelay3(relayData.relay3);
+      setRelay4(relayData.relay4);
     } catch (error) {
-      console.error(
-        "error in fetchRelay",
-        error
-      );
+      console.error("fetchRelay error:", error);
     }
   };
 
-  const updateRelay = async (newData: any) => {
+  // UPDATE SERVER ONLY (NO UI DELAY HERE)
+  const updateRelay = async (data: any) => {
     try {
-
-      await axios.post(
-        `${BASE_URL}/api/relay`,
-        newData
-      );
-
-      fetchRelay();
-
+      await axios.post(`${BASE_URL}/api/relay`, data);
     } catch (error) {
-      console.error(
-        "Update error:",
-        error
-      );
+      console.error("Update error:", error);
     }
   };
 
-  const allOn = async () => {
+  const toggleRelay = async (
+    relayKey: string,
+    value: boolean,
+    setState: (val: boolean) => void
+  ) => {
+    const newValue = !value;
+    setState(newValue);
+    try {
+      await axios.post(`${BASE_URL}/api/relay`, {
+        [relayKey]: newValue,
+      });
+    } catch (error) {
+      console.error("Update error:", error);
+      setState(value); // revert on error
+    }
+  };
+
+  // ALL ON
+  const allOn = () => {
+    setRelay1(true);
+    setRelay2(true);
+    setRelay3(true);
+    setRelay4(true);
     updateRelay({
       relay1: true,
       relay2: true,
@@ -70,8 +71,12 @@ function BluePrint() {
     });
   };
 
-  // All OFF
-  const allOff = async () => {
+  // ALL OFF
+  const allOff = () => {
+    setRelay1(false);
+    setRelay2(false);
+    setRelay3(false);
+    setRelay4(false);
     updateRelay({
       relay1: false,
       relay2: false,
@@ -80,51 +85,44 @@ function BluePrint() {
     });
   };
 
+  // ✅ FIX: Poll every 3 seconds so this screen stays in sync with DashboardGrid
   useEffect(() => {
     fetchRelay();
+    const interval = setInterval(fetchRelay, 3000);
+    return () => clearInterval(interval); // cleanup on unmount
   }, []);
 
   return (
     <View>
 
+      {/* HEADER */}
       <View style={styles.viewHeader}>
-        <Text style={styles.textHeader}>
-          House Blueprint
-        </Text>
+        <Text style={styles.textHeader}>House Blueprint</Text>
       </View>
 
+      {/* ALL BUTTONS */}
       <View style={styles.allBtnRow}>
 
-        <TouchableOpacity
-          style={styles.allOnBtn}
-          onPress={allOn}
-        >
-          <Text style={styles.allOnText}>
-            All ON
-          </Text>
+        <TouchableOpacity style={styles.allOnBtn} onPress={allOn}>
+          <Text style={styles.allOnText}>All ON</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.allOffBtn}
-          onPress={allOff}
-        >
-          <Text style={styles.allOffText}>
-            All OFF
-          </Text>
+        <TouchableOpacity style={styles.allOffBtn} onPress={allOff}>
+          <Text style={styles.allOffText}>All OFF</Text>
         </TouchableOpacity>
 
       </View>
 
+      {/* GRID */}
       <View style={styles.relayBox}>
-
         <View style={styles.fourBox}>
 
-          {/* LEFT COLUMN */}
+          {/* LEFT */}
           <View style={styles.leftColumn}>
+
+            {/* LIVING ROOM */}
             <View style={styles.livingRoom}>
-              <Text style={styles.roomLabel}>
-                Living Room
-              </Text>
+              <Text style={styles.roomLabel}>Living Room</Text>
 
               <TouchableOpacity
                 style={[
@@ -132,41 +130,29 @@ function BluePrint() {
                   relay1 && styles.powerBtnActive,
                 ]}
                 onPress={() =>
-                  updateRelay({
-                    relay1: !relay1,
-                  })
+                  toggleRelay("relay1", relay1, setRelay1)
                 }
               >
                 <View
                   style={[
                     styles.powerLine,
-                    relay1 &&
-                      styles.powerIconActive,
+                    relay1 && styles.powerIconActive,
                   ]}
                 />
-
                 <View
                   style={[
                     styles.powerCircle,
-                    relay1 &&
-                      styles.powerCircleActive,
+                    relay1 && styles.powerCircleActive,
                   ]}
                 />
-
               </TouchableOpacity>
 
-              <Text style={styles.relayTag}>
-                Relay 1
-              </Text>
-
+              <Text style={styles.relayTag}>Relay 1</Text>
             </View>
 
             {/* KITCHEN */}
             <View style={styles.kitchen}>
-
-              <Text style={styles.roomLabel}>
-                Kitchen
-              </Text>
+              <Text style={styles.roomLabel}>Kitchen</Text>
 
               <TouchableOpacity
                 style={[
@@ -174,47 +160,34 @@ function BluePrint() {
                   relay2 && styles.powerBtnActive,
                 ]}
                 onPress={() =>
-                  updateRelay({
-                    relay2: !relay2,
-                  })
+                  toggleRelay("relay2", relay2, setRelay2)
                 }
               >
-
                 <View
                   style={[
                     styles.powerLine,
-                    relay2 &&
-                      styles.powerIconActive,
+                    relay2 && styles.powerIconActive,
                   ]}
                 />
-
                 <View
                   style={[
                     styles.powerCircle,
-                    relay2 &&
-                      styles.powerCircleActive,
+                    relay2 && styles.powerCircleActive,
                   ]}
                 />
-
               </TouchableOpacity>
 
-              <Text style={styles.relayTag}>
-                Relay 2
-              </Text>
-
+              <Text style={styles.relayTag}>Relay 2</Text>
             </View>
 
           </View>
 
-          {/* RIGHT COLUMN */}
+          {/* RIGHT */}
           <View style={styles.rightColumn}>
 
             {/* BEDROOM */}
             <View style={styles.bedRoom}>
-
-              <Text style={styles.roomLabel}>
-                Bed Room
-              </Text>
+              <Text style={styles.roomLabel}>Bed Room</Text>
 
               <TouchableOpacity
                 style={[
@@ -222,42 +195,29 @@ function BluePrint() {
                   relay3 && styles.powerBtnActive,
                 ]}
                 onPress={() =>
-                  updateRelay({
-                    relay3: !relay3,
-                  })
+                  toggleRelay("relay3", relay3, setRelay3)
                 }
               >
-
                 <View
                   style={[
                     styles.powerLine,
-                    relay3 &&
-                      styles.powerIconActive,
+                    relay3 && styles.powerIconActive,
                   ]}
                 />
-
                 <View
                   style={[
                     styles.powerCircle,
-                    relay3 &&
-                      styles.powerCircleActive,
+                    relay3 && styles.powerCircleActive,
                   ]}
                 />
-
               </TouchableOpacity>
 
-              <Text style={styles.relayTag}>
-                Relay 3
-              </Text>
-
+              <Text style={styles.relayTag}>Relay 3</Text>
             </View>
 
             {/* BATHROOM */}
             <View style={styles.bathRoom}>
-
-              <Text style={styles.roomLabel}>
-                Bathroom
-              </Text>
+              <Text style={styles.roomLabel}>Bathroom</Text>
 
               <TouchableOpacity
                 style={[
@@ -265,42 +225,34 @@ function BluePrint() {
                   relay4 && styles.powerBtnActive,
                 ]}
                 onPress={() =>
-                  updateRelay({
-                    relay4: !relay4,
-                  })
+                  toggleRelay("relay4", relay4, setRelay4)
                 }
               >
-
                 <View
                   style={[
                     styles.powerLine,
-                    relay4 &&
-                      styles.powerIconActive,
+                    relay4 && styles.powerIconActive,
                   ]}
                 />
-
                 <View
                   style={[
                     styles.powerCircle,
-                    relay4 &&
-                      styles.powerCircleActive,
+                    relay4 && styles.powerCircleActive,
                   ]}
                 />
-
               </TouchableOpacity>
 
-              <Text style={styles.relayTag}>
-                Relay 4
-              </Text>
+              <Text style={styles.relayTag}>Relay 4</Text>
             </View>
+
           </View>
+
         </View>
       </View>
+
     </View>
   );
 }
-
-export default BluePrint;
 
 const styles = StyleSheet.create({
 
@@ -339,7 +291,6 @@ const styles = StyleSheet.create({
     color: '#2ecc71',
     fontWeight: '700',
     fontSize: 13,
-    letterSpacing: 1,
   },
 
   allOffBtn: {
@@ -355,7 +306,6 @@ const styles = StyleSheet.create({
     color: '#e74c3c',
     fontWeight: '700',
     fontSize: 13,
-    letterSpacing: 1,
   },
 
   relayBox: {
@@ -375,13 +325,13 @@ const styles = StyleSheet.create({
   },
 
   leftColumn: {
-    flex: 1,                        // FIXED: was width: '50%'
+    flex: 1,
     borderRightWidth: 1,
     borderRightColor: '#ffffff',
   },
 
   rightColumn: {
-    flex: 1,                        // FIXED: was width: '50%'
+    flex: 1,
   },
 
   livingRoom: {
@@ -416,9 +366,8 @@ const styles = StyleSheet.create({
     color: '#a0b4d6',
     fontSize: 12,
     fontWeight: '600',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
     marginBottom: 10,
+    textTransform: 'uppercase',
   },
 
   relayTag: {
@@ -439,8 +388,8 @@ const styles = StyleSheet.create({
   },
 
   powerBtnActive: {
-    borderColor: '#2ecc71',         // GREEN border when ON
-    backgroundColor: '#1d3b2a',    // dark green bg when ON
+    borderColor: '#2ecc71',
+    backgroundColor: '#1d3b2a',
   },
 
   powerLine: {
@@ -450,11 +399,10 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 2,
     backgroundColor: '#4a5568',
-    zIndex: 1,
   },
 
   powerIconActive: {
-    backgroundColor: '#2ecc71',    
+    backgroundColor: '#2ecc71',
   },
 
   powerCircle: {
@@ -468,7 +416,9 @@ const styles = StyleSheet.create({
   },
 
   powerCircleActive: {
-    borderColor: '#2ecc71',        
+    borderColor: '#2ecc71',
   },
 
 });
+
+export default BluePrint;
