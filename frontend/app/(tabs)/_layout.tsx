@@ -23,12 +23,7 @@ export default function TabLayout() {
         }}
       />
 
-      <Tabs.Screen
-        name="daily"
-        options={{
-          title: 'Daily',
-        }}
-        />
+
     </Tabs>
   );
 }

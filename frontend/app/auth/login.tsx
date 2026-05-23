@@ -11,6 +11,7 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
+  useWindowDimensions,
 } from "react-native";
 
 import axios from "axios";
@@ -22,13 +23,14 @@ const BASE_URL = "http://192.168.137.1:8000";
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const passwordRef = useRef<TextInput>(null);
-
   const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
 
   const animateIn = () => {
     Animated.spring(scaleAnim, {
@@ -55,13 +57,8 @@ export default function Login() {
 
       const res = await axios.post(
         `${BASE_URL}/api/auth/login`,
-        {
-          email,
-          password,
-        },
-        {
-          timeout: 5000,
-        }
+        { email, password },
+        { timeout: 5000 }
       );
 
       const token = res.data.token;
@@ -73,15 +70,12 @@ export default function Login() {
       }
 
       Alert.alert("Success", "Login successful!");
-
       router.replace("/(tabs)");
     } catch (err: any) {
       console.log(err?.response?.data || err.message);
-
       Alert.alert(
         "Login Failed",
-        err?.response?.data?.message ||
-          "Cannot connect to server."
+        err?.response?.data?.message || "Cannot connect to server."
       );
     } finally {
       setLoading(false);
@@ -99,89 +93,72 @@ export default function Login() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.card}>
+        {/* Constrain card width on desktop */}
+        <View style={[styles.cardWrapper, isDesktop && styles.cardWrapperDesktop]}>
+          <View style={styles.card}>
 
-          {/* LOGO */}
-          <View style={styles.logoContainer}>
-            <Text style={styles.logo}>⚡</Text>
-          </View>
+            {/* LOGO */}
+            <View style={styles.logoContainer}>
+              <Text style={styles.logo}>⚡</Text>
+            </View>
 
-          {/* TITLE */}
-          <Text style={styles.title}>VoltGuard</Text>
+            {/* TITLE */}
+            <Text style={styles.title}>VoltGuard</Text>
+            <Text style={styles.subtitle}>Sign in to continue</Text>
 
-          <Text style={styles.subtitle}>
-            Sign in to continue
-          </Text>
-
-          {/* EMAIL */}
-          <TextInput
-            placeholder="Email Address"
-            placeholderTextColor="#7c7c8a"
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            returnKeyType="next"
-            onSubmitEditing={() => passwordRef.current?.focus()}
-          />
-
-          {/* PASSWORD */}
-          <View style={styles.passwordContainer}>
+            {/* EMAIL */}
             <TextInput
-              ref={passwordRef}
-              placeholder="Password"
+              placeholder="Email Address"
               placeholderTextColor="#7c7c8a"
-              style={styles.passwordInput}
-              secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={setPassword}
-              returnKeyType="done"
-              onSubmitEditing={login}
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
             />
 
-            <TouchableOpacity
-              onPress={() => setShowPassword(!showPassword)}
-            >
-              <Text style={styles.eye}>
-                {showPassword ? "🙈" : "👁️"}
-              </Text>
+            {/* PASSWORD */}
+            <View style={styles.passwordContainer}>
+              <TextInput
+                ref={passwordRef}
+                placeholder="Password"
+                placeholderTextColor="#7c7c8a"
+                style={styles.passwordInput}
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={setPassword}
+                returnKeyType="done"
+                onSubmitEditing={login}
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                <Text style={styles.eye}>{showPassword ? "🙈" : "👁️"}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* BUTTON */}
+            <Animated.View style={{ transform: [{ scale: scaleAnim }], width: "100%" }}>
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPressIn={animateIn}
+                onPressOut={animateOut}
+                style={[styles.button, loading && styles.disabledButton]}
+                onPress={login}
+                disabled={loading}
+              >
+                <Text style={styles.buttonText}>
+                  {loading ? "Signing In..." : "Sign In"}
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* REGISTER */}
+            <TouchableOpacity onPress={() => router.push("/auth/register")}>
+              <Text style={styles.link}>Don't have an account? Sign Up</Text>
             </TouchableOpacity>
+
           </View>
-
-          {/* BUTTON */}
-          <Animated.View
-            style={{
-              transform: [{ scale: scaleAnim }],
-              width: "100%",
-            }}
-          >
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPressIn={animateIn}
-              onPressOut={animateOut}
-              style={[
-                styles.button,
-                loading && styles.disabledButton,
-              ]}
-              onPress={login}
-              disabled={loading}
-            >
-              <Text style={styles.buttonText}>
-                {loading ? "Signing In..." : "Sign In"}
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-
-          {/* REGISTER */}
-          <TouchableOpacity
-            onPress={() => router.push("/auth/register")}
-          >
-            <Text style={styles.link}>
-              Don’t have an account? Sign Up
-            </Text>
-          </TouchableOpacity>
-
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -197,7 +174,16 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     justifyContent: "center",
+    alignItems: "center",       // centers cardWrapper horizontally
     padding: 24,
+  },
+
+  // Full width on mobile, fixed width on desktop
+  cardWrapper: {
+    width: "100%",
+  },
+  cardWrapperDesktop: {
+    width: 420,                 // max card width on PC
   },
 
   card: {
