@@ -1,37 +1,52 @@
 import { sql } from "../config/db.js";
 
-// Memory storage for live monitoring (similar to your moisture example)
+// Memory storage for live monitoring
 let liveData = {
   pzem1: { voltage: 0, current: 0, power: 0, energy: 0, frequency: 0, pf: 0 },
   pzem2: { voltage: 0, current: 0, power: 0, energy: 0, frequency: 0, pf: 0 },
   pzem3: { voltage: 0, current: 0, power: 0, energy: 0, frequency: 0, pf: 0 },
 };
 
+// Track previous readings globally so it doesn't cause a reference error crash
+let lastEnergy = {
+  pzem1: 0,
+  pzem2: 0,
+  pzem3: 0,
+};
+
 /**
  * 1. ADD READING (Memory Only)
- * ESP32 calls this every 2 seconds.
+ * ESP32 calls this every 2 seconds sending an array payload.
  */
 export const addReading = async (req, res) => {
   try {
-    const { pzem1, pzem2, pzem3 } = req.body;
+    const readingsArray = req.body;
 
-    // Update the live memory variables
-    if (pzem1) liveData.pzem1 = pzem1;
-    if (pzem2) liveData.pzem2 = pzem2;
-    if (pzem3) liveData.pzem3 = pzem3;
+    if (Array.isArray(readingsArray)) {
+      readingsArray.forEach((item) => {
+        const { outlet_id, voltage, current, power, energy, frequency, pf } = item;
+        
+        // Extract metrics nicely matching the incoming ESP32 JSON schema
+        const metrics = { voltage, current, power, energy, frequency, pf };
+
+        if (outlet_id === 1) liveData.pzem1 = metrics;
+        if (outlet_id === 2) liveData.pzem2 = metrics;
+        if (outlet_id === 3) liveData.pzem3 = metrics;
+      });
+    }
 
     return res.status(200).json({ message: "Live data updated" });
   } catch (error) {
+    console.error("Error updating live data:", error);
     return res.status(500).json({ message: "Error updating live data" });
   }
 };
 
 /**
  * 2. GET LATEST (Fetch from Memory)
- * React Native calls this every 2 seconds for the "Live" feel.
+ * React Native calls this every 2 seconds for the dashboard view.
  */
 export const getAllLatestReadings = (req, res) => {
-  // Convert the object to an array format your frontend expects
   const dataArray = [
     { outlet_id: 1, ...liveData.pzem1, outlet_name: "Outlet 1" },
     { outlet_id: 2, ...liveData.pzem2, outlet_name: "Outlet 2" },
@@ -55,14 +70,11 @@ const saveToDatabase = async () => {
     ];
 
     for (const outlet of pzemMap) {
-      const currentEnergy = outlet.data.energy;
-
+      const currentEnergy = outlet.data.energy || 0;
       const previousEnergy = lastEnergy[outlet.key] || 0;
 
-      // 🔥 THIS IS WHERE hourly_used_kwh is created
+      // Delta math calculation for consumption trends
       const hourlyUsed = currentEnergy - previousEnergy;
-
-      // safety check
       const safeHourlyUsed = hourlyUsed < 0 ? 0 : hourlyUsed;
 
       await sql`
@@ -88,7 +100,7 @@ const saveToDatabase = async () => {
         )
       `;
 
-      // update last energy
+      // Cache current layout configuration for the next hour comparison
       lastEnergy[outlet.key] = currentEnergy;
     }
 
@@ -98,5 +110,5 @@ const saveToDatabase = async () => {
   }
 };
 
-// Start the timer: 1 hour = 60 mins * 60 secs * 1000 ms
+// Start hourly scheduler loop
 setInterval(saveToDatabase, 3600000);

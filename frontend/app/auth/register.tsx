@@ -100,7 +100,6 @@ export default function Register() {
         }
 
         Alert.alert("Success", "Account created successfully!");
-
         router.replace("/(tabs)");
       } else {
         router.push("/auth/login");
@@ -245,6 +244,7 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     justifyContent: "center",
+    alignItems: "center", // Centering logic for web display viewports
     padding: 24,
   },
 
@@ -254,6 +254,9 @@ const styles = StyleSheet.create({
     padding: 24,
     borderWidth: 1,
     borderColor: "#1e1e2d",
+    // Responsive Formula:
+    width: "100%",
+    maxWidth: 440, // Limits form stretch on desktop while maintaining 100% bounds on mobile phones
   },
 
   logoContainer: {
@@ -306,10 +309,20 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     marginTop: 6,
-    shadowColor: "#00d4ff",
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 5,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#00d4ff",
+        shadowOpacity: 0.4,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 5,
+      },
+      web: {
+        // Drop heavy native elevations causing block highlights on web views
+        boxShadow: "0px 4px 15px rgba(0, 212, 255, 0.35)",
+      }
+    })
   },
 
   disabledButton: {

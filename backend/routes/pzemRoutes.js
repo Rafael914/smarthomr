@@ -6,8 +6,8 @@ import {
 
 const router = express.Router();
 
-router.post("/reading", addReading);
-
-router.get("/latest", getAllLatestReadings);             
+// Maps endpoints cleanly so both GET and POST mount straight to "/api/pzem"
+router.post("/", addReading);
+router.get("/", getAllLatestReadings);             
 
 export default router;
