@@ -7,18 +7,22 @@ import {
   ScrollView,
   Modal,
   TextInput,
+  Alert,
 } from "react-native";
 import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 import { router } from "expo-router";
 import { Platform } from "react-native";
 
-const BASE_URL = "http://192.168.1.64:8000";
+const BASE_URL = "http://192.168.137.1:8000"; 
 
+// Expanded CONFIG to 5 channels
 const RELAY_CONFIG = [
-  { id: "relay1", label: "Outlet 1", icon: "🔌" },
-  { id: "relay2", label: "Outlet 2", icon: "⚡" },
-  { id: "relay3", label: "Outlet 3", icon: "💡" },
+  { id: "relay1", label: "Living Area", icon: "🔌" },
+  { id: "relay2", label: "Kitchen", icon: "⚡" },
+  { id: "relay3", label: "Bedroom", icon: "💡" },
+  { id: "relay4", label: "MEDIA ROOM", icon: "🖥️" },
+  { id: "relay5", label: "Front Balcony", icon: "🌀" },
 ];
 
 type Schedule = {
@@ -27,10 +31,13 @@ type Schedule = {
   enabled: boolean;
 };
 
+// Expanded Types to 5 channels
 type Schedules = {
   relay1: Schedule;
   relay2: Schedule;
   relay3: Schedule;
+  relay4: Schedule;
+  relay5: Schedule;
 };
 
 type PzemReading = {
@@ -45,16 +52,21 @@ type PzemReading = {
 };
 
 export default function DashboardGrid() {
+  // Expanded State Hooks to 5 channels
   const [relayStates, setRelayStates] = useState({
     relay1: false,
     relay2: false,
     relay3: false,
+    relay4: false,
+    relay5: false,
   });
 
   const [schedules, setSchedules] = useState<Schedules>({
     relay1: { onTime: "", offTime: "", enabled: false },
     relay2: { onTime: "", offTime: "", enabled: false },
     relay3: { onTime: "", offTime: "", enabled: false },
+    relay4: { onTime: "", offTime: "", enabled: false },
+    relay5: { onTime: "", offTime: "", enabled: false },
   });
 
   const [pzemReadings, setPzemReadings] = useState<PzemReading[]>([]);
@@ -74,6 +86,8 @@ export default function DashboardGrid() {
           relay1: !!data.relay1,
           relay2: !!data.relay2,
           relay3: !!data.relay3,
+          relay4: !!data.relay4,
+          relay5: !!data.relay5,
         });
       }
     } catch (error: any) {
@@ -147,11 +161,13 @@ export default function DashboardGrid() {
 
     const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
     if (inputOn && !timeRegex.test(inputOn)) {
-      alert("Invalid ON time format. Use HH:MM (e.g. 08:00)");
+      if (Platform.OS === 'web') alert("Invalid ON time format. Use HH:MM (e.g. 08:00)");
+      else Alert.alert("Validation Error", "Invalid ON time format. Use HH:MM (e.g. 08:00)");
       return;
     }
     if (inputOff && !timeRegex.test(inputOff)) {
-      alert("Invalid OFF time format. Use HH:MM (e.g. 22:00)");
+      if (Platform.OS === 'web') alert("Invalid OFF time format. Use HH:MM (e.g. 22:00)");
+      else Alert.alert("Validation Error", "Invalid OFF time format. Use HH:MM (e.g. 22:00)");
       return;
     }
 
@@ -190,7 +206,7 @@ export default function DashboardGrid() {
   const totalEnergy = pzemError ? 0 : pzemReadings.reduce((sum, r) => sum + (r.energy || 0), 0);
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScrollView contentContainerStyle={styles.scrollContent} style={styles.rootScrollView}>
       <View style={styles.mainContainer}>
         
         {/* ── Header ── */}
@@ -246,9 +262,13 @@ export default function DashboardGrid() {
                   <TouchableOpacity
                     activeOpacity={0.9}
                     onPress={() => toggleRelay(relay.id, isOn)}
-                    style={[styles.switchTrack, isOn ? styles.switchTrackOn : styles.switchTrackOff]}
+                    style={[
+                      styles.switchTrack, 
+                      isOn ? styles.switchTrackOn : styles.switchTrackOff,
+                      isOn ? styles.trackAlignOn : styles.trackAlignOff
+                    ]}
                   >
-                    <View style={[styles.switchThumb, isOn ? styles.switchThumbOn : styles.switchThumbOff]} />
+                    <View style={styles.switchThumb} />
                   </TouchableOpacity>
                 </View>
 
@@ -283,7 +303,7 @@ export default function DashboardGrid() {
           </View>
         </View>
 
-        {/* ── 3x Real-Time PZEM Cards Grid ── */}
+        {/* ── 5x Real-Time PZEM Cards Grid (Dynamically follows RELAY_CONFIG array length) ── */}
         <View style={styles.pzemGrid}>
           {RELAY_CONFIG.map((config, index) => {
             const reading = (!pzemError && pzemReadings.find((r) => r.outlet_id === index + 1)) || {
@@ -419,6 +439,7 @@ export default function DashboardGrid() {
 }
 
 const styles = StyleSheet.create({
+  rootScrollView: {},
   scrollContent: { 
     paddingBottom: 40, 
     minHeight: "100%",
@@ -426,7 +447,7 @@ const styles = StyleSheet.create({
   },
   mainContainer: {
     width: "100%",
-    maxWidth: 1024, // Expanded to support clean 3-column web dashboard space
+    maxWidth: 1024,
     paddingHorizontal: 16,
   },
 
@@ -453,7 +474,28 @@ const styles = StyleSheet.create({
   },
   logoutBtnText: { color: "#e74c3c", fontSize: 12, fontWeight: "700" },
 
-  // ── Smart Relay Cards Layout Fix ──
+  // ── Switch Layout Components ──
+  switchTrack: { 
+    width: 50, 
+    height: 28, 
+    borderRadius: 14, 
+    flexDirection: "row",   
+    alignItems: "center",    
+    paddingHorizontal: 3,
+  },
+  switchTrackOn: { backgroundColor: "#22c55e" },
+  switchTrackOff: { backgroundColor: "#374151" },
+  trackAlignOn: { justifyContent: "flex-end" },    
+  trackAlignOff: { justifyContent: "flex-start" },  
+
+  switchThumb: { 
+    width: 22, 
+    height: 22, 
+    borderRadius: 11, 
+    backgroundColor: "#fff" 
+  },
+
+  // ── Relay Smart Cards Layout ──
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -467,10 +509,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#2a2f4e",
     gap: 8,
-    // Universal dynamic scaling fix:
     flexGrow: 1,
     flexShrink: 0,
-    minWidth: 260, // Prevents elements from squeezing inward or overlapping on small viewports
+    minWidth: 260,
   },
   cardActive: { borderColor: "#22c55e55", backgroundColor: "#0f2a1a" },
   cardTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
@@ -492,17 +533,11 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 12, fontWeight: "700" },
   badgeTextOn: { color: "#22c55e" },
   badgeTextOff: { color: "#6b7280" },
-  switchTrack: { width: 50, height: 28, borderRadius: 14, justifyContent: "center", paddingHorizontal: 3 },
-  switchTrackOn: { backgroundColor: "#22c55e" },
-  switchTrackOff: { backgroundColor: "#374151" },
-  switchThumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: "#fff" },
-  switchThumbOn: { alignSelf: "flex-end" },
-  switchThumbOff: { alignSelf: "flex-start" },
   schedBtn: { borderWidth: 1, borderColor: "#2a2f4e", borderRadius: 8, paddingVertical: 6, alignItems: "center", marginTop: 4 },
   schedBtnActive: { borderColor: "#22c55e55", backgroundColor: "#0a2a18" },
   schedBtnText: { fontSize: 11, color: "#8888a0" },
 
-  // ── Universal Responsive Telemetry Grid Fix ──
+  // ── Telemetry Styling ──
   sectionHeader: { alignItems: "flex-start", marginTop: 36, marginBottom: 14, width: "100%" },
   sectionTitle: { fontSize: 20, fontWeight: "700", color: "#fff" },
   sectionSub: { fontSize: 12, color: "#8888a0", marginTop: 2 },
@@ -534,7 +569,6 @@ const styles = StyleSheet.create({
     borderWidth: 1, 
     borderColor: "#2a2f4e", 
     padding: 16,
-    // Fix: Allow clean flex wrap columns contextually across viewports
     flexGrow: 1,
     flexShrink: 0,
     minWidth: 290, 
