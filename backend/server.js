@@ -11,6 +11,8 @@ import pzemRoutes from "./routes/pzemRoutes.js"
 // import { aj } from "./lib/arcjet.js";
 import { sql } from "./config/db.js";
 import authRoutes from './routes/authRoutes.js'
+import geofenceRoutes from "./routes/geofenceRoutes.js";
+import { initGeofenceTable } from "./controller/geofenceController.js";
 
 // ========================
 // LOAD ENV FIRST
@@ -65,6 +67,7 @@ app.use(morgan("dev"));
 app.use("/api/relay", relayRoutes);
 app.use("/api/pzem", pzemRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/geofence', geofenceRoutes);
 
 app.get("/", (req, res) => {
   res.json({ message: "Smart Home Backend is running 🚀" });
@@ -72,7 +75,7 @@ app.get("/", (req, res) => {
 
 
 async function initDB() {
-
+  await initGeofenceTable();
 }
 
 // ========================

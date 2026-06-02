@@ -15,7 +15,7 @@ import {
 } from "react-native";
 
 import axios from "axios";
-import * as SecureStore from "expo-secure-store";
+import { Storage } from "../../utils/storage";
 import { router } from "expo-router";
 
 const BASE_URL = "http://192.168.137.1:8000";
@@ -62,12 +62,15 @@ export default function Login() {
       );
 
       const token = res.data.token;
+      const userId = res.data.user?.id;
 
-      if (Platform.OS === "web") {
-        localStorage.setItem("token", token);
-      } else {
-        await SecureStore.setItemAsync("token", token);
+      if (!userId) {
+        Alert.alert("Error", "No user ID received from server");
+        return;
       }
+
+      await Storage.setItem("token", token);
+      await Storage.setItem("userId", userId.toString());
 
       Alert.alert("Success", "Login successful!");
       router.replace("/(tabs)");

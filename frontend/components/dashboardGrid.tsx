@@ -285,13 +285,13 @@ export default function DashboardGrid() {
           })}
         </View>
 
-        {/* ── Section Title: Energy Monitoring ── */}
+        {/*  Section Title: Energy Monitoring  */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>⚡ Power Telemetry</Text>
           <Text style={styles.sectionSub}>Live metrics from individual PZEM modules</Text>
         </View>
 
-        {/* ── Summary Cards Block ── */}
+        {/*  Summary Cards Block  */}
         <View style={styles.summaryRow}>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Combined Load</Text>

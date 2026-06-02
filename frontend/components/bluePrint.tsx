@@ -12,19 +12,19 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useVoiceCommand } from '@/hooks/useVoiceCommand';
 
 const BASE_URL = "http://192.168.137.1:8000";
 
 function BluePrint() {
-
+  const { isListening, startListening, stopListening } = useVoiceCommand();
   const [activeFloor, setActiveFloor] = useState<1 | 2>(1);
-
 
   const [relay1, setRelay1] = useState(false); // 1st Fl: Living Area
   const [relay2, setRelay2] = useState(false); // 1st Fl: Kitchen / Dining
   const [relay3, setRelay3] = useState(false); // 2nd Fl: Master Bedroom
-  const [relay4, setRelay4] = useState(false); // 2nd Fl: Bathroom
-  const [relay5, setRelay5] = useState(false); // 2nd Fl: Suspended Balcony
+  const [relay4, setRelay4] = useState(false); // 2nd Fl: Media Room
+  const [relay5, setRelay5] = useState(false); // 2nd Fl: Balcony
 
   const fetchRelay = async () => {
     try {
@@ -117,6 +117,17 @@ function BluePrint() {
     return () => clearInterval(interval);
   }, []);
 
+  // Web-safe grid injection to stop layout compiler exceptions
+  const getGridStyle = () => {
+    if (Platform.OS === 'web') {
+      return {
+        backgroundImage: 'linear-gradient(0deg, transparent 24%, rgba(0, 255, 255, 0.1) 25%, rgba(0, 255, 255, 0.1) 26%, transparent 27%, transparent 74%, rgba(0, 255, 255, 0.1) 75%, rgba(0, 255, 255, 0.1) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(0, 255, 255, 0.1) 25%, rgba(0, 255, 255, 0.1) 26%, transparent 27%, transparent 74%, rgba(0, 255, 255, 0.1) 75%, rgba(0, 255, 255, 0.1) 76%, transparent 77%, transparent)',
+        backgroundSize: '30px 30px',
+      } as any;
+    }
+    return {};
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer} style={styles.rootBackground}>
       <View style={styles.mainContainer}>
@@ -163,11 +174,54 @@ function BluePrint() {
           </TouchableOpacity>
         </View>
 
+        {/* VOICE COMMAND BUTTON */}
+        <View style={styles.voiceCommandContainer}>
+          {!isListening ? (
+            <TouchableOpacity 
+              style={styles.voiceBtn}
+              onPress={startListening}
+              activeOpacity={0.8}
+            >
+              <Ionicons 
+                name="mic-outline" 
+                size={20} 
+                color="#00ffff"
+              />
+              <Text style={styles.voiceBtnText}>
+                🎤 VOICE COMMAND
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.listeningContainer}>
+              <TouchableOpacity 
+                style={styles.stopBtn}
+                onPress={stopListening}
+                activeOpacity={0.8}
+              >
+                <Ionicons 
+                  name="mic" 
+                  size={20} 
+                  color="#ffffff"
+                />
+                <Text style={styles.stopBtnText}>
+                  STOP LISTENING
+                </Text>
+              </TouchableOpacity>
+              <View style={styles.listeningIndicator}>
+                <Text style={styles.listeningText}>🔴 LISTENING...</Text>
+              </View>
+            </View>
+          )}
+          <Text style={styles.voiceHintText}>
+            Say: "outlet1 on" or "relay 2 off"
+          </Text>
+        </View>
+
         {/* HIGH-REALISM BLUEPRINT FRAME */}
         <View style={styles.blueprintWrapper}>
           <View style={styles.houseFrame}>
             <View style={styles.gridOverlayLayer1} pointerEvents="none" />
-            <View style={styles.gridOverlayLayer2} pointerEvents="none" />
+            <View style={[styles.gridOverlayLayer2, getGridStyle()]} pointerEvents="none" />
 
             {/* Corner Draft Marks */}
             <Text style={[styles.draftMark, styles.tlMark]}>＋</Text>
@@ -213,7 +267,6 @@ function BluePrint() {
                 <View style={styles.exteriorRowContainer}>
                   <View style={styles.exteriorMetaContainer}>
                     <Text style={styles.roomLabel}>GROUND FLOOR MAIN ENTRY</Text>
-
                   </View>
                   <Text style={styles.draftingNotes}>◀ ACCESS WAY</Text>
                 </View>
@@ -236,7 +289,7 @@ function BluePrint() {
                     <Text style={[styles.relayTag, relay3 && styles.relayTagActive]}>[CH_03_RLY]</Text>
                   </View>
 
-                  {/* BATHROOM */}
+                  {/* MEDIA ROOM */}
                   <View style={[styles.roomContainer, relay4 && styles.roomActive]}>
                     <Text style={[styles.roomLabel, relay4 && styles.textCyan]}>MEDIA ROOM</Text>
                     <Text style={styles.dimensionText}>2.10m x 2.20m</Text>
@@ -251,7 +304,7 @@ function BluePrint() {
                   </View>
                 </View>
 
-                {/* THE ACTUAL SUSPENDED BALCONY */}
+                {/* FRONT BALCONY */}
                 <View style={[styles.exteriorRowContainer, relay5 && styles.roomActive]}>
                   <View style={styles.exteriorMetaContainer}>
                     <Text style={[styles.roomLabel, relay5 && styles.textCyan]}>FRONT BALCONY</Text>
@@ -268,7 +321,6 @@ function BluePrint() {
                 </View>
               </View>
             )}
-
 
             <View style={styles.technicalTitleBlock}>
               <Text style={styles.titleBlockBoldText}>VOLTGUARD CORP.</Text>
@@ -342,7 +394,6 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
 
-  // ── Structural Selector Tabs ──
   floorTabRow: {
     flexDirection: 'row',
     width: '100%',
@@ -438,11 +489,7 @@ const styles = StyleSheet.create({
   },
   gridOverlayLayer2: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.04,
-    backgroundImage: Platform.OS === 'web' 
-      ? 'linear-gradient(0deg, transparent 24%, #00ffff 25%, #00ffff 26%, transparent 27%, transparent 74%, #00ffff 75%, #00ffff 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, #00ffff 25%, #00ffff 26%, transparent 27%, transparent 74%, #00ffff 75%, #00ffff 76%, transparent 77%, transparent)'
-      : undefined,
-    backgroundSize: Platform.OS === 'web' ? '30px 30px' : undefined,
+    opacity: 0.4, // Bumped slightly for layout clarity on web
   },
   draftMark: {
     position: 'absolute',
@@ -535,7 +582,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 
-  // Metadata block changing labels based on state
   technicalTitleBlock: {
     position: 'absolute',
     bottom: 6,
@@ -561,6 +607,77 @@ const styles = StyleSheet.create({
     fontSize: 7,
     fontWeight: '500',
     lineHeight: 9,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
+  
+  voiceCommandContainer: {
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 24,
+    gap: 8,
+  },
+  voiceBtn: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    borderWidth: 2,
+    borderColor: '#00ffff',
+    borderRadius: 4,
+    paddingVertical: 12,
+    backgroundColor: '#00ffff11',
+  },
+  listeningContainer: {
+    width: '100%',
+    gap: 8,
+  },
+  stopBtn: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    borderWidth: 2,
+    borderColor: '#ff6b6b',
+    borderRadius: 4,
+    paddingVertical: 12,
+    backgroundColor: '#ff6b6b22',
+  },
+  stopBtnText: {
+    color: '#ff6b6b',
+    fontWeight: '700',
+    fontSize: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    letterSpacing: 1,
+  },
+  listeningIndicator: {
+    width: '100%',
+    alignItems: 'center',
+    paddingVertical: 8,
+    backgroundColor: '#ff6b6b11',
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#ff6b6b44',
+  },
+  listeningText: {
+    color: '#ff6b6b',
+    fontWeight: '700',
+    fontSize: 11,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    letterSpacing: 1,
+  },
+  voiceBtnText: {
+    color: '#00ffff',
+    fontWeight: '700',
+    fontSize: 12,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    letterSpacing: 1,
+  },
+  voiceHintText: {
+    color: '#00a3a3',
+    fontSize: 10,
+    fontStyle: 'italic',
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
 });
