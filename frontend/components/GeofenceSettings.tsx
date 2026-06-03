@@ -14,8 +14,7 @@ import {
 import { useGeofence } from "../hooks/useGeofence";
 import { Storage } from "../utils/storage";
 import axios from "axios";
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || "http://192.168.137.1:8000";
+import { BASE_URL } from "../utils/api";
 
 interface GeofenceSettings {
   geofence_enabled: boolean;
@@ -166,7 +165,7 @@ export const GeofenceSettings: React.FC = () => {
       }
 
       await axios.post(
-        `${API_BASE_URL}/api/geofence/update-radius`,
+        `${BASE_URL}/api/geofence/update-radius`,
         { userId: parseInt(userId), radiusMeters: newRadius },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -352,6 +351,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: "100%",
+    backgroundColor: "#0a0a0f", 
   },
   contentContainer: {
     padding: 16,
@@ -359,6 +359,10 @@ const styles = StyleSheet.create({
     maxWidth: 800,
     marginHorizontal: "auto",
     width: "100%",
+
+    flexGrow: 1,            
+    justifyContent: "center", 
+    alignItems: "center",    
   },
   card: {
     backgroundColor: "#1a1a1f",
@@ -366,7 +370,9 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     borderColor: "#00d4ff",
+    width: "100%",
   },
+
   title: {
     fontSize: 24,
     fontWeight: "bold",

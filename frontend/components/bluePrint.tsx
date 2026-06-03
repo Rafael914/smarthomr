@@ -13,8 +13,7 @@ import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useVoiceCommand } from '@/hooks/useVoiceCommand';
-
-const BASE_URL = "http://192.168.137.1:8000";
+import { BASE_URL } from '../utils/api';
 
 function BluePrint() {
   const { isListening, startListening, stopListening } = useVoiceCommand();

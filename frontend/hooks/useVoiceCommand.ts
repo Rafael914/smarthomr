@@ -1,18 +1,17 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Alert, Platform } from 'react-native';
 import axios from 'axios';
-
-// ⚠️ IMPORTANT: replace this with react-native-voice later
-// import Voice from '@react-native-voice/voice';
-
-const BASE_URL = "http://192.168.137.1:8000";
+import Voice, {
+  SpeechErrorEvent,
+  SpeechResultsEvent,
+} from '@react-native-voice/voice';
+import { BASE_URL } from '../utils/api';
 
 interface RelayCommand {
   relayNumber: number;
   action: 'on' | 'off';
 }
 
-// ─── Normalize speech ─────────────────────────────
 const normalizeSpeech = (text: string): string => {
   return text
     .toLowerCase()
@@ -28,7 +27,6 @@ const normalizeSpeech = (text: string): string => {
     .replace(/\bturn off\b|\bswitch off\b|\bdisable\b/g, 'off');
 };
 
-// ─── Parse command ────────────────────────────────
 const parseVoiceCommand = (text: string): RelayCommand | null => {
   const normalized = normalizeSpeech(text);
 
@@ -60,7 +58,6 @@ const parseVoiceCommand = (text: string): RelayCommand | null => {
   return null;
 };
 
-// ─── API call ─────────────────────────────────────
 const executeRelayCommand = async (cmd: RelayCommand) => {
   const key = `relay${cmd.relayNumber}`;
 
@@ -69,29 +66,80 @@ const executeRelayCommand = async (cmd: RelayCommand) => {
   });
 };
 
-// ─── HOOK ─────────────────────────────────────────
 export const useVoiceCommand = () => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const webRecognitionRef = useRef<any>(null);
 
-  const showAlert = (t: string, m: string) => {
-    Platform.OS === 'web' ? alert(`${t}: ${m}`) : Alert.alert(t, m);
-  };
+  const showAlert = useCallback((title: string, message: string) => {
+    Platform.OS === 'web' ? alert(`${title}: ${message}`) : Alert.alert(title, message);
+  }, []);
 
-  // ⚠️ WEB ONLY VERSION (what you currently have)
-  const startListening = useCallback(() => {
-    if (Platform.OS !== 'web') {
-      showAlert('Not Supported', 'Install native speech library for APK');
-      return;
-    }
+  const handleRecognizedText = useCallback(
+    async (text?: string) => {
+      if (!text) return;
 
+      setTranscript(text);
+      setError(null);
+
+      const cmd = parseVoiceCommand(text);
+      if (!cmd) {
+        showAlert('Voice Command', `Command not recognized: ${text}`);
+        return;
+      }
+
+      try {
+        await executeRelayCommand(cmd);
+        showAlert(
+          'Voice Command',
+          `Relay ${cmd.relayNumber} turned ${cmd.action.toUpperCase()}`
+        );
+      } catch (err: any) {
+        const message = err?.message || 'Failed to send relay command';
+        setError(message);
+        showAlert('Voice Command Error', message);
+      }
+    },
+    [showAlert]
+  );
+
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+
+    Voice.onSpeechStart = () => {
+      setIsListening(true);
+      setError(null);
+    };
+
+    Voice.onSpeechEnd = () => {
+      setIsListening(false);
+    };
+
+    Voice.onSpeechError = (event: SpeechErrorEvent) => {
+      const message = event.error?.message || 'Speech recognition failed';
+      setError(message);
+      setIsListening(false);
+    };
+
+    Voice.onSpeechResults = (event: SpeechResultsEvent) => {
+      handleRecognizedText(event.value?.[0]);
+    };
+
+    return () => {
+      Voice.destroy().then(Voice.removeAllListeners).catch(() => undefined);
+    };
+  }, [handleRecognizedText]);
+
+  const startWebListening = useCallback(() => {
     const SpeechRecognition =
       (window as any).SpeechRecognition ||
       (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      setError('Speech recognition not supported');
+      const message = 'Speech recognition is not supported in this browser.';
+      setError(message);
+      showAlert('Not Supported', message);
       return;
     }
 
@@ -99,30 +147,71 @@ export const useVoiceCommand = () => {
     recognition.lang = 'en-US';
     recognition.continuous = false;
     recognition.interimResults = false;
+    webRecognitionRef.current = recognition;
 
     setIsListening(true);
+    setError(null);
 
-    recognition.onresult = async (e: any) => {
-      const text = e.results[0][0].transcript;
-      setTranscript(text);
-
-      const cmd = parseVoiceCommand(text);
-      if (!cmd) return;
-
-      await executeRelayCommand(cmd);
+    recognition.onresult = async (event: any) => {
+      await handleRecognizedText(event.results[0][0].transcript);
     };
 
-    recognition.onerror = (e: any) => {
-      setError(e.error);
+    recognition.onerror = (event: any) => {
+      setError(event.error || 'Speech recognition failed');
       setIsListening(false);
     };
 
-    recognition.onend = () => setIsListening(false);
+    recognition.onend = () => {
+      setIsListening(false);
+      webRecognitionRef.current = null;
+    };
 
     recognition.start();
-  }, []);
+  }, [handleRecognizedText, showAlert]);
 
-  const stopListening = useCallback(() => {
+  const startNativeListening = useCallback(async () => {
+    try {
+      const available = await Voice.isAvailable();
+      if (!available) {
+        showAlert('Not Supported', 'Speech recognition is not available on this device.');
+        return;
+      }
+
+      setTranscript('');
+      setError(null);
+      setIsListening(true);
+      await Voice.start('en-US');
+    } catch (err: any) {
+      const message = err?.message || 'Could not start speech recognition';
+      setError(message);
+      setIsListening(false);
+      showAlert('Voice Command Error', message);
+    }
+  }, [showAlert]);
+
+  const startListening = useCallback(() => {
+    if (Platform.OS === 'web') {
+      startWebListening();
+      return;
+    }
+
+    startNativeListening();
+  }, [startNativeListening, startWebListening]);
+
+  const stopListening = useCallback(async () => {
+    if (Platform.OS === 'web') {
+      webRecognitionRef.current?.stop?.();
+      webRecognitionRef.current = null;
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      await Voice.stop();
+    } catch (err: any) {
+      setError(err?.message || 'Could not stop speech recognition');
+    }
+
     setIsListening(false);
   }, []);
 

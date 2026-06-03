@@ -34,7 +34,7 @@ export const Storage = {
       if (Platform.OS === "web") {
         localStorage.removeItem(key);
       } else {
-        await SecureStore.removeItemAsync(key);
+        await SecureStore.deleteItemAsync(key);
       }
     } catch (error) {
       console.error(`Error removing item ${key}:`, error);

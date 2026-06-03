@@ -40,7 +40,14 @@
       ],
       "expo-secure-store",
       "expo-web-browser",
-      "expo-font"
+      "expo-font",
+      [
+        "@react-native-voice/voice",
+        {
+          "microphonePermission": "Allow SmartHome to access the microphone for voice commands.",
+          "speechRecognitionPermission": "Allow SmartHome to recognize speech for voice commands."
+        }
+      ]
     ],
 
     "extra": {

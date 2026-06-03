@@ -13,8 +13,7 @@ import axios from "axios";
 import * as SecureStore from "expo-secure-store";
 import { router } from "expo-router";
 import { Platform } from "react-native";
-
-const BASE_URL = "http://192.168.137.1:8000"; 
+import { BASE_URL } from "../utils/api";
 
 // Expanded CONFIG to 5 channels
 const RELAY_CONFIG = [

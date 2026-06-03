@@ -1,12 +1,13 @@
 // hooks/useGeofence.ts
 import { useEffect, useRef, useCallback } from "react";
+import { Platform } from "react-native";
 import * as Location from "expo-location";
 import * as TaskManager from "expo-task-manager";
 import axios from "axios";
 import { Storage } from "../utils/storage";
+import { BASE_URL } from "../utils/api";
 
 const GEOFENCE_TASK = "geofenceTask";
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || "http://192.168.137.1:8000";
 
 // Define the background task
 TaskManager.defineTask(GEOFENCE_TASK, async () => {
@@ -19,7 +20,7 @@ TaskManager.defineTask(GEOFENCE_TASK, async () => {
 
     // Check geofence distance
     const response = await axios.post(
-      `${API_BASE_URL}/api/geofence/check-distance`,
+      `${BASE_URL}/api/geofence/check-distance`,
       {
         userId: parseInt(userId),
         currentLatitude: location.coords.latitude,
@@ -33,7 +34,7 @@ TaskManager.defineTask(GEOFENCE_TASK, async () => {
     // If too far from home, disable all relays
     if (response.data.shouldDisableRelays) {
       await axios.post(
-        `${API_BASE_URL}/api/relay`,
+        `${BASE_URL}/api/relay`,
         {
           relay1: false,
           relay2: false,
@@ -55,6 +56,47 @@ TaskManager.defineTask(GEOFENCE_TASK, async () => {
 
 export const useGeofence = () => {
   const geofenceEnabledRef = useRef(false);
+  const webWatchIdRef = useRef<number | null>(null);
+
+  const checkDistanceAndDisableRelays = useCallback(
+    async (latitude: number, longitude: number) => {
+      const token = await Storage.getItem("token");
+      const userId = await Storage.getItem("userId");
+
+      if (!token || !userId) return;
+
+      const response = await axios.post(
+        `${BASE_URL}/api/geofence/check-distance`,
+        {
+          userId: parseInt(userId),
+          currentLatitude: latitude,
+          currentLongitude: longitude,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (response.data.shouldDisableRelays) {
+        await axios.post(
+          `${BASE_URL}/api/relay`,
+          {
+            relay1: false,
+            relay2: false,
+            relay3: false,
+            relay4: false,
+            relay5: false,
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        console.log("Geofence triggered: All relays disabled");
+      }
+    },
+    []
+  );
 
   // Request location permissions
   const requestLocationPermission = useCallback(async () => {
@@ -87,6 +129,42 @@ export const useGeofence = () => {
   // Start geofence tracking
   const startGeofenceTracking = useCallback(async () => {
     try {
+      if (Platform.OS === "web") {
+        const webNavigator = globalThis.navigator as any;
+
+        if (!webNavigator?.geolocation) {
+          console.warn("Web geolocation is not available in this browser");
+          return false;
+        }
+
+        if (webWatchIdRef.current !== null) {
+          webNavigator.geolocation.clearWatch(webWatchIdRef.current);
+        }
+
+        const options = {
+          enableHighAccuracy: true,
+          maximumAge: 30000,
+          timeout: 20000,
+        };
+
+        webWatchIdRef.current = webNavigator.geolocation.watchPosition(
+          (position: GeolocationPosition) => {
+            checkDistanceAndDisableRelays(
+              position.coords.latitude,
+              position.coords.longitude
+            );
+          },
+          (error: GeolocationPositionError) => {
+            console.warn("Web geofence location error:", error.message);
+          },
+          options
+        );
+
+        geofenceEnabledRef.current = true;
+        console.log("Web geofence tracking started");
+        return true;
+      }
+
       const hasPermission = await requestLocationPermission();
       if (!hasPermission) return false;
 
@@ -115,11 +193,24 @@ export const useGeofence = () => {
       console.error("Error starting geofence tracking:", error);
       return false;
     }
-  }, [requestLocationPermission]);
+  }, [checkDistanceAndDisableRelays, requestLocationPermission]);
 
   // Stop geofence tracking
   const stopGeofenceTracking = useCallback(async () => {
     try {
+      if (Platform.OS === "web") {
+        const webNavigator = globalThis.navigator as any;
+
+        if (webWatchIdRef.current !== null) {
+          webNavigator?.geolocation?.clearWatch(webWatchIdRef.current);
+          webWatchIdRef.current = null;
+        }
+
+        geofenceEnabledRef.current = false;
+        console.log("Web geofence tracking stopped");
+        return true;
+      }
+
       await Location.stopLocationUpdatesAsync(GEOFENCE_TASK);
       geofenceEnabledRef.current = false;
       console.log("⏹️ Geofence tracking stopped");
@@ -160,7 +251,7 @@ export const useGeofence = () => {
       if (!userId || !token) return null;
 
       const response = await axios.get(
-        `${API_BASE_URL}/api/geofence/settings/${userId}`,
+        `${BASE_URL}/api/geofence/settings/${userId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -197,7 +288,7 @@ export const useGeofence = () => {
 
       console.log("Sending home location to backend...");
       await axios.post(
-        `${API_BASE_URL}/api/geofence/set-home`,
+        `${BASE_URL}/api/geofence/set-home`,
         {
           userId: parseInt(userId),
           latitude: location.latitude,
@@ -226,7 +317,7 @@ export const useGeofence = () => {
         if (!userId || !token) return false;
 
         await axios.post(
-          `${API_BASE_URL}/api/geofence/toggle`,
+          `${BASE_URL}/api/geofence/toggle`,
           {
             userId: parseInt(userId),
             enabled: enabled,

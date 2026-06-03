@@ -17,8 +17,7 @@ import {
 import axios from "axios";
 import { Storage } from "../../utils/storage";
 import { router } from "expo-router";
-
-const BASE_URL = "http://192.168.137.1:8000";
+import { BASE_URL } from "../../utils/api";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -158,7 +157,7 @@ export default function Login() {
 
             {/* REGISTER */}
             <TouchableOpacity onPress={() => router.push("/auth/register")}>
-              <Text style={styles.link}>Don't have an account? Sign Up</Text>
+              <Text style={styles.link}>{"Don't have an account? Sign Up"}</Text>
             </TouchableOpacity>
 
           </View>

@@ -16,8 +16,7 @@ import {
 import axios from "axios";
 import { Storage } from "../../utils/storage";
 import { router } from "expo-router";
-
-const BASE_URL = "http://192.168.137.1:8000";
+import { BASE_URL } from "../../utils/api";
 
 export default function Register() {
   const [name, setName] = useState("");
