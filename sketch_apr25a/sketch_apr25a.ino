@@ -15,6 +15,7 @@ String serverURL = "http://192.168.137.1:8000/api/relay";
 
 // Relay states
 bool relayState1 = false;
+
 bool relayState2 = false;
 bool relayState3 = false;
 bool relayState4 = false;
