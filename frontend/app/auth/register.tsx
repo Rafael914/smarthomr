@@ -5,12 +5,12 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   Animated,
   ScrollView,
   Platform,
   StatusBar,
   KeyboardAvoidingView,
+  Alert,
 } from "react-native";
 
 import axios from "axios";
@@ -25,6 +25,9 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [loading, setLoading] = useState(false);
+  
+  // New UI state to hold the error message string
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
@@ -47,31 +50,37 @@ export default function Register() {
     }).start();
   };
 
+  // Cross-platform alert utility function
+  const showAlert = (title: string, message: string) => {
+    if (Platform.OS === "web") {
+      alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
   const handleRegister = async () => {
+    setErrorMessage(null);
+
     if (
       !name.trim() ||
       !email.trim() ||
       !password.trim() ||
       !confirmPassword.trim()
     ) {
-      return Alert.alert(
-        "Missing Fields",
-        "Please complete all fields."
-      );
+      setErrorMessage("Please complete all input fields.");
+      return;
     }
 
     if (password.length < 6) {
-      return Alert.alert(
-        "Weak Password",
-        "Password must be at least 6 characters."
-      );
+      setErrorMessage("Password must be at least 6 characters.");
+      return;
     }
 
+
     if (password !== confirmPassword) {
-      return Alert.alert(
-        "Password Mismatch",
-        "Passwords do not match."
-      );
+      setErrorMessage("Passwords do not match. Please verify.");
+      return;
     }
 
     try {
@@ -96,19 +105,16 @@ export default function Register() {
         await Storage.setItem("token", token);
         await Storage.setItem("userId", userId.toString());
 
-        Alert.alert("Success", "Account created successfully!");
+        showAlert("Success", "Account created successfully!");
         router.replace("/(tabs)");
       } else {
         router.push("/auth/login");
       }
     } catch (err: any) {
       console.log(err?.response?.data || err.message);
-
-      Alert.alert(
-        "Registration Failed",
-        err?.response?.data?.message ||
-          "Cannot connect to server."
-      );
+      
+      const serverMsg = err?.response?.data?.message;
+      setErrorMessage(serverMsg || "Registration failed. Cannot connect to server.");
     } finally {
       setLoading(false);
     }
@@ -148,7 +154,10 @@ export default function Register() {
             placeholderTextColor="#7c7c8a"
             style={styles.input}
             value={name}
-            onChangeText={setName}
+            onChangeText={(text) => {
+              setName(text);
+              if (errorMessage) setErrorMessage(null);
+            }}
             returnKeyType="next"
             onSubmitEditing={() => emailRef.current?.focus()}
           />
@@ -160,7 +169,10 @@ export default function Register() {
             placeholderTextColor="#7c7c8a"
             style={styles.input}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (errorMessage) setErrorMessage(null);
+            }}
             keyboardType="email-address"
             autoCapitalize="none"
             returnKeyType="next"
@@ -175,7 +187,10 @@ export default function Register() {
             style={styles.input}
             secureTextEntry
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => {
+              setPassword(text);
+              if (errorMessage) setErrorMessage(null);
+            }}
             returnKeyType="next"
             onSubmitEditing={() => confirmRef.current?.focus()}
           />
@@ -188,10 +203,20 @@ export default function Register() {
             style={styles.input}
             secureTextEntry
             value={confirmPassword}
-            onChangeText={setConfirmPassword}
+            onChangeText={(text) => {
+              setConfirmPassword(text);
+              if (errorMessage) setErrorMessage(null);
+            }}
             returnKeyType="done"
             onSubmitEditing={handleRegister}
           />
+
+          {/* INLINE UI ERROR CONTAINER */}
+          {errorMessage && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>⚠️ {errorMessage}</Text>
+            </View>
+          )}
 
           {/* BUTTON */}
           <Animated.View
@@ -237,34 +262,28 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#07070b",
   },
-
   scroll: {
     flexGrow: 1,
     justifyContent: "center",
-    alignItems: "center", // Centering logic for web display viewports
+    alignItems: "center",
     padding: 24,
   },
-
   card: {
     backgroundColor: "#111118",
     borderRadius: 24,
     padding: 24,
     borderWidth: 1,
     borderColor: "#1e1e2d",
-    // Responsive Formula:
     width: "100%",
-    maxWidth: 440, // Limits form stretch on desktop while maintaining 100% bounds on mobile phones
+    maxWidth: 440,
   },
-
   logoContainer: {
     alignItems: "center",
     marginBottom: 10,
   },
-
   logo: {
     fontSize: 55,
   },
-
   brand: {
     color: "#00d4ff",
     fontSize: 34,
@@ -273,14 +292,12 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: 6,
   },
-
   title: {
     color: "#fff",
     fontSize: 28,
     fontWeight: "800",
     textAlign: "center",
   },
-
   subtitle: {
     color: "#9ca3af",
     textAlign: "center",
@@ -288,7 +305,6 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     fontSize: 14,
   },
-
   input: {
     backgroundColor: "#1a1a24",
     borderWidth: 1,
@@ -299,7 +315,20 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontSize: 15,
   },
-
+  errorContainer: {
+    backgroundColor: "rgba(239, 68, 68, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(239, 68, 68, 0.3)",
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: "#ef4444",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+  },
   button: {
     backgroundColor: "#00d4ff",
     paddingVertical: 16,
@@ -316,22 +345,18 @@ const styles = StyleSheet.create({
         elevation: 5,
       },
       web: {
-        // Drop heavy native elevations causing block highlights on web views
         boxShadow: "0px 4px 15px rgba(0, 212, 255, 0.35)",
       }
     })
   },
-
   disabledButton: {
     opacity: 0.6,
   },
-
   buttonText: {
     color: "#000",
     fontWeight: "800",
     fontSize: 16,
   },
-
   link: {
     color: "#00d4ff",
     textAlign: "center",

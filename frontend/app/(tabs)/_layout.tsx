@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import { Text, Platform } from 'react-native';
 
 export default function TabLayout() {
   return (
@@ -11,9 +11,15 @@ export default function TabLayout() {
         tabBarStyle: {
           backgroundColor: '#0b0f19',
           borderTopColor: '#2a2f4e',
-         
           elevation: 8, 
           shadowOpacity: 0, 
+          // Enforces standard vertical heights on web viewports
+          ...Platform.select({
+            web: {
+              height: 65,
+              paddingBottom: 8,
+            },
+          }),
         },
         tabBarActiveTintColor: '#22c55e',   
         tabBarInactiveTintColor: '#6b7280',  
@@ -24,6 +30,8 @@ export default function TabLayout() {
         },
         tabBarIconStyle: {
           marginTop: 4, 
+          justifyContent: 'center',
+          alignItems: 'center',
         }
       }}>
       
@@ -31,12 +39,8 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Dashboard',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? "grid" : "grid-outline"} 
-              size={20} 
-              color={color} 
-            />
+          tabBarIcon: () => (
+            <Text style={{ fontSize: 20, textAlign: 'center' }}>📊</Text>
           ),
         }}
       />
@@ -45,12 +49,8 @@ export default function TabLayout() {
         name="outlets"
         options={{
           title: 'Outlets',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? "flash" : "flash-outline"} 
-              size={20} 
-              color={color} 
-            />
+          tabBarIcon: () => (
+            <Text style={{ fontSize: 20, textAlign: 'center' }}>⚡</Text>
           ),
         }}
       />
@@ -59,12 +59,8 @@ export default function TabLayout() {
         name="geofence"
         options={{
           title: 'Geofence',
-          tabBarIcon: ({ color, focused }) => (
-            <Ionicons 
-              name={focused ? "location" : "location-outline"} 
-              size={20} 
-              color={color} 
-            />
+          tabBarIcon: () => (
+            <Text style={{ fontSize: 20, textAlign: 'center' }}>📍</Text>
           ),
         }}
       />

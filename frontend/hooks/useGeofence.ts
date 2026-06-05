@@ -9,6 +9,40 @@ import { BASE_URL } from "../utils/api";
 
 const GEOFENCE_TASK = "geofenceTask";
 
+/**
+ * Helper utility to securely sanitize text inputs or voice transcription errors.
+ * Maps variations like "relay two", "relay to", or "2" directly to "relay2".
+ */
+const normalizeRelayKey = (input: string | number): string | null => {
+  const cleanInput = String(input).toLowerCase().trim();
+  
+  const wordToNumberMap: { [key: string]: string } = {
+    "one": "1",
+    "two": "2", "to": "2", "too": "2", "twoo": "2",
+    "three": "3", "tree": "3",
+    "four": "4", "for": "4",
+    "five": "5"
+  };
+
+  let detectedDigit = "";
+
+  // Check if string contains any of our homophone word keys
+  for (const [word, num] of Object.entries(wordToNumberMap)) {
+    if (cleanInput.includes(word)) {
+      detectedDigit = num;
+      break;
+    }
+  }
+
+  // If no word matched, parse out a literal digit between 1 and 5
+  if (!detectedDigit) {
+    const match = cleanInput.match(/[1-5]/);
+    if (match) detectedDigit = match[0];
+  }
+
+  return detectedDigit ? `relay${detectedDigit}` : null;
+};
+
 // Define the background task
 TaskManager.defineTask(GEOFENCE_TASK, async () => {
   try {
@@ -101,21 +135,18 @@ export const useGeofence = () => {
   // Request location permissions
   const requestLocationPermission = useCallback(async () => {
     try {
-      // Request foreground location permission
       const foregroundStatus = await Location.requestForegroundPermissionsAsync();
       if (foregroundStatus.status !== "granted") {
         console.warn("Foreground location permission denied");
         return false;
       }
 
-      // Request background location permission (may not always be granted)
       try {
         const backgroundStatus = await Location.requestBackgroundPermissionsAsync();
         if (backgroundStatus.status !== "granted") {
           console.warn("Background location permission not granted - app will only track when in foreground");
         }
       } catch (error) {
-        // Background permissions might not be available on all platforms
         console.warn("Background location permissions not available:", error);
       }
 
@@ -168,14 +199,12 @@ export const useGeofence = () => {
       const hasPermission = await requestLocationPermission();
       if (!hasPermission) return false;
 
-      // Check if task is already defined
       const isTaskDefined = TaskManager.isTaskDefined(GEOFENCE_TASK);
       if (!isTaskDefined) {
         console.warn("Geofence task not defined");
         return false;
       }
 
-      // Start location monitoring in background (updates every 5 minutes or 50 meters moved)
       await Location.startLocationUpdatesAsync(GEOFENCE_TASK, {
         accuracy: Location.Accuracy.Balanced,
         timeInterval: 300000, // 5 minutes
@@ -343,6 +372,46 @@ export const useGeofence = () => {
     [startGeofenceTracking, stopGeofenceTracking]
   );
 
+  /**
+   * NEW FEATURE: Dynamic voice/text parser method.
+   * Call this from your UI components when a user types or speaks a specific command.
+   * Example usages: 
+   * normalizeAndToggleRelay("relay two", true)
+   * normalizeAndToggleRelay("turn off relay to", false)
+   * normalizeAndToggleRelay(2, true)
+   */
+  const normalizeAndToggleRelay = useCallback(
+    async (rawRelayInput: string | number, targetState: boolean) => {
+      try {
+        const token = await Storage.getItem("token");
+        if (!token) {
+          console.error("No authorization token found");
+          return false;
+        }
+
+        const validKey = normalizeRelayKey(rawRelayInput);
+        if (!validKey) {
+          console.error(`Could not interpret relay value from input: "${rawRelayInput}"`);
+          return false;
+        }
+
+        console.log(`Parsed input "${rawRelayInput}" successfully into backend payload key: "${validKey}"`);
+
+        const response = await axios.post(
+          `${BASE_URL}/api/relay`,
+          { [validKey]: targetState },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        return true;
+      } catch (error) {
+        console.error("Error updating single dynamic relay status:", error);
+        return false;
+      }
+    },
+    []
+  );
+
   return {
     startGeofenceTracking,
     stopGeofenceTracking,
@@ -350,6 +419,7 @@ export const useGeofence = () => {
     checkGeofenceStatus,
     setHomeLocation,
     toggleGeofence,
+    normalizeAndToggleRelay, 
     geofenceEnabledRef,
   };
 };

@@ -15,6 +15,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useVoiceCommand } from '@/hooks/useVoiceCommand';
 import { BASE_URL } from '../utils/api';
 
+
+const DraftCrosshair = ({ style }: { style: any }) => (
+  <View style={[styles.crosshairContainer, style]}>
+    <View style={styles.crosshairHorizontal} />
+    <View style={styles.crosshairVertical} />
+  </View>
+);
+
 function BluePrint() {
   const { isListening, startListening, stopListening } = useVoiceCommand();
   const [activeFloor, setActiveFloor] = useState<1 | 2>(1);
@@ -116,7 +124,6 @@ function BluePrint() {
     return () => clearInterval(interval);
   }, []);
 
-  // Web-safe grid injection to stop layout compiler exceptions
   const getGridStyle = () => {
     if (Platform.OS === 'web') {
       return {
@@ -222,11 +229,11 @@ function BluePrint() {
             <View style={styles.gridOverlayLayer1} pointerEvents="none" />
             <View style={[styles.gridOverlayLayer2, getGridStyle()]} pointerEvents="none" />
 
-            {/* Corner Draft Marks */}
-            <Text style={[styles.draftMark, styles.tlMark]}>＋</Text>
-            <Text style={[styles.draftMark, styles.trMark]}>＋</Text>
-            <Text style={[styles.draftMark, styles.blMark]}>＋</Text>
-            <Text style={[styles.draftMark, styles.brMark]}>＋</Text>
+            {/* FIXED: Scalable Vector-Style Corner Crosshair Marks */}
+            <DraftCrosshair style={styles.tlMark} />
+            <DraftCrosshair style={styles.trMark} />
+            <DraftCrosshair style={styles.blMark} />
+            <DraftCrosshair style={styles.brMark} />
 
             {/* DYNAMIC BLUEPRINT CONDITIONAL VIEWPORTS */}
             {activeFloor === 1 ? (
@@ -242,7 +249,7 @@ function BluePrint() {
                       onPress={() => toggleRelay("relay1", relay1, setRelay1)}
                       activeOpacity={0.9}
                     >
-                      <Ionicons name="radio-button-off-outline" size={24} color={relay1 ? "#ffffff" : "#00ffff"} />
+                      <Text style={styles.emojiIcon}>{relay1 ? "🟢" : "⚪"}</Text>
                     </TouchableOpacity>
                     <Text style={[styles.relayTag, relay1 && styles.relayTagActive]}>[CH_01_RLY]</Text>
                   </View>
@@ -256,13 +263,13 @@ function BluePrint() {
                       onPress={() => toggleRelay("relay2", relay2, setRelay2)}
                       activeOpacity={0.9}
                     >
-                      <Ionicons name="radio-button-off-outline" size={24} color={relay2 ? "#ffffff" : "#00ffff"} />
+                      <Text style={styles.emojiIcon}>{relay2 ? "🟢" : "⚪"}</Text>
                     </TouchableOpacity>
                     <Text style={[styles.relayTag, relay2 && styles.relayTagActive]}>[CH_02_RLY]</Text>
                   </View>
                 </View>
 
-                {/* GROUND ENTRY / PORCH BASE */}
+                /* GROUND ENTRY / PORCH BASE */
                 <View style={styles.exteriorRowContainer}>
                   <View style={styles.exteriorMetaContainer}>
                     <Text style={styles.roomLabel}>GROUND FLOOR MAIN ENTRY</Text>
@@ -271,7 +278,7 @@ function BluePrint() {
                 </View>
               </View>
             ) : (
-              /* SECOND FLOOR VIEWPORT*/
+              /* ════════════════ SECOND FLOOR VIEWPORT ════════════════ */
               <View style={styles.viewportContainer}>
                 <View style={styles.interiorGridRow}>
                   {/* MASTER BEDROOM */}
@@ -283,7 +290,7 @@ function BluePrint() {
                       onPress={() => toggleRelay("relay3", relay3, setRelay3)}
                       activeOpacity={0.9}
                     >
-                      <Ionicons name="radio-button-off-outline" size={24} color={relay3 ? "#ffffff" : "#00ffff"} />
+                      <Text style={styles.emojiIcon}>{relay3 ? "🟢" : "⚪"}</Text>
                     </TouchableOpacity>
                     <Text style={[styles.relayTag, relay3 && styles.relayTagActive]}>[CH_03_RLY]</Text>
                   </View>
@@ -297,7 +304,7 @@ function BluePrint() {
                       onPress={() => toggleRelay("relay4", relay4, setRelay4)}
                       activeOpacity={0.9}
                     >
-                      <Ionicons name="radio-button-off-outline" size={24} color={relay4 ? "#ffffff" : "#00ffff"} />
+                      <Text style={styles.emojiIcon}>{relay4 ? "🟢" : "⚪"}</Text>
                     </TouchableOpacity>
                     <Text style={[styles.relayTag, relay4 && styles.relayTagActive]}>[CH_04_RLY]</Text>
                   </View>
@@ -314,7 +321,7 @@ function BluePrint() {
                     onPress={() => toggleRelay("relay5", relay5, setRelay5)}
                     activeOpacity={0.9}
                   >
-                    <Ionicons name="radio-button-off-outline" size={24} color={relay5 ? "#ffffff" : "#00ffff"} />
+                    <Text style={styles.emojiIcon}>{relay5 ? "🟢" : "⚪"}</Text>
                   </TouchableOpacity>
                   <Text style={[styles.relayTag, relay5 && styles.relayTagActive]}>[CH_05_RLY]</Text>
                 </View>
@@ -488,18 +495,32 @@ const styles = StyleSheet.create({
   },
   gridOverlayLayer2: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.4, // Bumped slightly for layout clarity on web
+    opacity: 0.4,
   },
-  draftMark: {
+
+  crosshairContainer: {
     position: 'absolute',
-    color: '#00ffff44',
-    fontSize: 14,
-    fontWeight: 'bold',
+    width: 14,
+    height: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  tlMark: { top: 4, left: 6 },
-  trMark: { top: 4, right: 6 },
-  blMark: { bottom: 4, left: 6 },
-  brMark: { bottom: 4, right: 6 },
+  crosshairHorizontal: {
+    position: 'absolute',
+    width: 14,
+    height: 2,
+    backgroundColor: '#00ffff44',
+  },
+  crosshairVertical: {
+    position: 'absolute',
+    width: 2,
+    height: 14,
+    backgroundColor: '#00ffff44',
+  },
+  tlMark: { top: 8, left: 8 },
+  trMark: { top: 8, right: 8 },
+  blMark: { bottom: 8, left: 8 },
+  brMark: { bottom: 8, right: 8 },
 
   interiorGridRow: {
     flex: 3.8,
@@ -575,6 +596,10 @@ const styles = StyleSheet.create({
   powerBtnActive: {
     borderColor: '#ffffff',
     backgroundColor: '#0088cc',
+  },
+  emojiIcon: {
+    fontSize: 16,
+    textAlign: 'center',
   },
   exteriorMetaContainer: {
     alignItems: 'center',

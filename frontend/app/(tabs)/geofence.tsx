@@ -24,7 +24,7 @@ export default function GeofenceScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0a0a0f",
+    backgroundColor: "#001424",
   },
   webContainer: {
     flex: 1,

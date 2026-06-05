@@ -90,11 +90,12 @@ export const useVoiceCommand = () => {
       }
 
       try {
+        // Execute the API call
         await executeRelayCommand(cmd);
-        showAlert(
-          'Voice Command',
-          `Relay ${cmd.relayNumber} turned ${cmd.action.toUpperCase()}`
-        );
+        
+        // SUCCESS ALERT REMOVED FROM HERE
+        // The relay state updates silently on success now.
+        
       } catch (err: any) {
         const message = err?.message || 'Failed to send relay command';
         setError(message);

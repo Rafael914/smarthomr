@@ -5,13 +5,13 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   Animated,
   ScrollView,
   StatusBar,
   KeyboardAvoidingView,
   Platform,
   useWindowDimensions,
+  Alert,
 } from "react-native";
 
 import axios from "axios";
@@ -24,6 +24,9 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // New state to hold the error message for the UI
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const passwordRef = useRef<TextInput>(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -46,9 +49,22 @@ export default function Login() {
     }).start();
   };
 
+  const showAlert = (title: string, message: string) => {
+    if (Platform.OS === "web") {
+      // Fallback for web testing so you get a browser popup
+      alert(`${title}: ${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
   const login = async () => {
+    // Clear any previous error messages when trying again
+    setErrorMessage(null);
+
     if (!email.trim() || !password.trim()) {
-      return Alert.alert("Missing Fields", "Please enter email and password.");
+      setErrorMessage("Please enter both email and password.");
+      return;
     }
 
     try {
@@ -64,21 +80,29 @@ export default function Login() {
       const userId = res.data.user?.id;
 
       if (!userId) {
-        Alert.alert("Error", "No user ID received from server");
+        setErrorMessage("No user ID received from server.");
         return;
       }
 
       await Storage.setItem("token", token);
       await Storage.setItem("userId", userId.toString());
 
-      Alert.alert("Success", "Login successful!");
+
       router.replace("/(tabs)");
     } catch (err: any) {
-      console.log(err?.response?.data || err.message);
-      Alert.alert(
-        "Login Failed",
-        err?.response?.data?.message || "Cannot connect to server."
-      );
+      console.log("Login Error Details:", err?.response?.data || err.message);
+
+      const status = err?.response?.status;
+      const serverMessage = err?.response?.data?.message;
+
+      // Catch the 401 Unauthorized intentionally triggered by your wrong password
+      if (status === 401 || status === 400) {
+        setErrorMessage(serverMessage || "Incorrect email or password. Please try again.");
+      } else if (err.code === "ECONNABORTED" || err.message.includes("timeout")) {
+        setErrorMessage("The server took too long to respond. Please try again.");
+      } else {
+        setErrorMessage(serverMessage || "Cannot connect to server. Please check your network.");
+      }
     } finally {
       setLoading(false);
     }
@@ -95,7 +119,6 @@ export default function Login() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Constrain card width on desktop */}
         <View style={[styles.cardWrapper, isDesktop && styles.cardWrapperDesktop]}>
           <View style={styles.card}>
 
@@ -114,7 +137,10 @@ export default function Login() {
               placeholderTextColor="#7c7c8a"
               style={styles.input}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                if(errorMessage) setErrorMessage(null); // Clear error when typing
+              }}
               keyboardType="email-address"
               autoCapitalize="none"
               returnKeyType="next"
@@ -130,7 +156,10 @@ export default function Login() {
                 style={styles.passwordInput}
                 secureTextEntry={!showPassword}
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if(errorMessage) setErrorMessage(null); // Clear error when typing
+                }}
                 returnKeyType="done"
                 onSubmitEditing={login}
               />
@@ -138,6 +167,13 @@ export default function Login() {
                 <Text style={styles.eye}>{showPassword ? "🙈" : "👁️"}</Text>
               </TouchableOpacity>
             </View>
+
+            {/* ERROR MESSAGE DYNAMICALLY DISPLAYED ON UI */}
+            {errorMessage && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>⚠️ {errorMessage}</Text>
+              </View>
+            )}
 
             {/* BUTTON */}
             <Animated.View style={{ transform: [{ scale: scaleAnim }], width: "100%" }}>
@@ -172,22 +208,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#07070b",
   },
-
   scroll: {
     flexGrow: 1,
     justifyContent: "center",
-    alignItems: "center",       // centers cardWrapper horizontally
+    alignItems: "center",
     padding: 24,
   },
-
-  // Full width on mobile, fixed width on desktop
   cardWrapper: {
     width: "100%",
   },
   cardWrapperDesktop: {
-    width: 420,                 // max card width on PC
+    width: 420,
   },
-
   card: {
     backgroundColor: "#111118",
     borderRadius: 24,
@@ -195,23 +227,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#1e1e2d",
   },
-
   logoContainer: {
     alignItems: "center",
     marginBottom: 12,
   },
-
   logo: {
     fontSize: 55,
   },
-
   title: {
     color: "#fff",
     fontSize: 30,
     fontWeight: "800",
     textAlign: "center",
   },
-
   subtitle: {
     color: "#9ca3af",
     textAlign: "center",
@@ -219,7 +247,6 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     fontSize: 14,
   },
-
   input: {
     backgroundColor: "#1a1a24",
     borderWidth: 1,
@@ -230,7 +257,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     fontSize: 15,
   },
-
   passwordContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -241,18 +267,30 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     paddingRight: 12,
   },
-
   passwordInput: {
     flex: 1,
     padding: 16,
     color: "#fff",
     fontSize: 15,
   },
-
   eye: {
     fontSize: 18,
   },
-
+  // Added styling for the clean UI error warning block
+  errorContainer: {
+    backgroundColor: "rgba(239, 68, 68, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(239, 68, 68, 0.3)",
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 16,
+  },
+  errorText: {
+    color: "#ef4444",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+  },
   button: {
     backgroundColor: "#00d4ff",
     paddingVertical: 16,
@@ -264,17 +302,14 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 5,
   },
-
   disabledButton: {
     opacity: 0.6,
   },
-
   buttonText: {
     color: "#000",
     fontWeight: "800",
     fontSize: 16,
   },
-
   link: {
     color: "#00d4ff",
     textAlign: "center",
