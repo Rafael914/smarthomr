@@ -22,7 +22,7 @@ interface GeofenceSettings {
   radius_meters: number;
 }
 
-const POLL_INTERVAL_MS = 10_000; // 10 seconds
+const POLL_INTERVAL_MS = 10_000; 
 
 export const GeofenceSettings: React.FC = () => {
   const {
@@ -124,7 +124,7 @@ export const GeofenceSettings: React.FC = () => {
     [getCurrentLocation]
   );
 
-  // ─── Auto-poll while home location is set ───────────────────────────────────
+  // ─── Auto-poll while home location is set 
 
   useEffect(() => {
     if (!settings.home_latitude || !settings.home_longitude) {
@@ -139,7 +139,7 @@ export const GeofenceSettings: React.FC = () => {
     return () => clearInterval(interval);
   }, [settings.home_latitude, settings.home_longitude, fetchLocation]);
 
-  // ─── Manual "Get Current Location" button ───────────────────────────────────
+  // ─── Manual "Get Current Location" button 
 
   const handleGetCurrentLocation = async () => {
     setLoadingLocation(true);
@@ -147,7 +147,7 @@ export const GeofenceSettings: React.FC = () => {
     setLoadingLocation(false);
   };
 
-  // ─── Set home location ───────────────────────────────────────────────────────
+  // ─── Set home location 
 
   const handleSetHomeLocation = async () => {
     setLoadingHome(true);

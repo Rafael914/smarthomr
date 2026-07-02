@@ -9,10 +9,7 @@ import { BASE_URL } from "../utils/api";
 
 const GEOFENCE_TASK = "geofenceTask";
 
-/**
- * Helper utility to securely sanitize text inputs or voice transcription errors.
- * Maps variations like "relay two", "relay to", or "2" directly to "relay2".
- */
+
 const normalizeRelayKey = (input: string | number): string | null => {
   const cleanInput = String(input).toLowerCase().trim();
   

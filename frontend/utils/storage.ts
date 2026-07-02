@@ -1,8 +1,8 @@
-// utils/storage.ts
+
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
-// Cross-platform storage utility that works on both web and native
+
 export const Storage = {
   async getItem(key: string): Promise<string | null> {
     try {
