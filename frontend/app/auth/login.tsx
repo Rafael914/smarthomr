@@ -59,7 +59,6 @@ export default function Login() {
   };
 
   const login = async () => {
-    // Clear any previous error messages when trying again
     setErrorMessage(null);
 
     if (!email.trim() || !password.trim()) {
@@ -139,7 +138,7 @@ export default function Login() {
               value={email}
               onChangeText={(text) => {
                 setEmail(text);
-                if(errorMessage) setErrorMessage(null); // Clear error when typing
+                if(errorMessage) setErrorMessage(null); 
               }}
               keyboardType="email-address"
               autoCapitalize="none"
@@ -158,7 +157,7 @@ export default function Login() {
                 value={password}
                 onChangeText={(text) => {
                   setPassword(text);
-                  if(errorMessage) setErrorMessage(null); // Clear error when typing
+                  if(errorMessage) setErrorMessage(null);
                 }}
                 returnKeyType="done"
                 onSubmitEditing={login}

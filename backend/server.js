@@ -20,7 +20,7 @@ import { initGeofenceTable } from "./controller/geofenceController.js";
 
 
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 5000;
 const __dirname = path.resolve();
 
 // ========================
@@ -74,7 +74,7 @@ app.get("/", (req, res) => {
 });
 
 
-async function initDB() {
+async function   initDB() {
   await initGeofenceTable();
 }
 
@@ -86,3 +86,4 @@ initDB().then(() => {
     console.log(`🚀 Server running at: http://192.168.137.1:${PORT}`);
   });
 });
+

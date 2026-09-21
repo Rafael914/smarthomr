@@ -59,7 +59,7 @@ The geofence feature automatically turns off all relays when you move **500+ met
        ]
      }
    }
-   ```
+  
 
 3. **Start Frontend**:
    ```bash

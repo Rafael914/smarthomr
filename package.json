@@ -1,0 +1,12 @@
+{
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  },
+
+  "scripts":{
+    "dev": "concurrently \"npm run dev:frontend\" \"npm run dev:backend\" \"npm run dev:ai\"",
+    "dev:frontend": "npm run start --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:ai": "cd backend/ai_backend && .venv\\Scripts\\python -m uvicorn main:app --reload"
+  }
+}

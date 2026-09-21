@@ -109,7 +109,7 @@ export default function Register() {
         router.replace("/(tabs)");
       } else {
         router.push("/auth/login");
-      }
+      } 
     } catch (err: any) {
       console.log(err?.response?.data || err.message);
       

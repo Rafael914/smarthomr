@@ -51,7 +51,7 @@ type PzemReading = {
 };
 
 export default function DashboardGrid() {
-  // Expanded State Hooks to 5 channels
+
   const [relayStates, setRelayStates] = useState({
     relay1: false,
     relay2: false,

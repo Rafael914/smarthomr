@@ -4,9 +4,7 @@ import { sql } from "../config/db.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
 
-// ==========================================
-// REGISTER
-// ==========================================
+
 export const register = async (req, res) => {
   const { name, email, password } = req.body;
 

@@ -13,7 +13,6 @@ export default function TabLayout() {
           borderTopColor: '#2a2f4e',
           elevation: 8, 
           shadowOpacity: 0, 
-          // Enforces standard vertical heights on web viewports
           ...Platform.select({
             web: {
               height: 65,
@@ -61,6 +60,16 @@ export default function TabLayout() {
           title: 'Geofence',
           tabBarIcon: () => (
             <Text style={{ fontSize: 20, textAlign: 'center' }}>📍</Text>
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="chatbot"
+        options={{
+          title: 'Chatbot',
+          tabBarIcon: () => (
+            <Text style={{ fontSize: 20, textAlign: 'center' }}>🤖</Text>
           ),
         }}
       />
