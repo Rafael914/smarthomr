@@ -1,13 +1,13 @@
 import { useEffect } from "react";
 import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { router } from "expo-router";
-import * as SecureStore from "expo-secure-store";
+import { Storage } from "../utils/storage";
 
 export default function Index() {
   useEffect(() => {
     const checkLogin = async () => {
       try {
-        const token = await SecureStore.getItemAsync("token");
+        const token = await Storage.getItem("token");
 
         if (token) {
           router.replace("/(tabs)");

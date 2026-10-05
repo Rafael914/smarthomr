@@ -1,7 +1,8 @@
 import { neon } from "@neondatabase/serverless";
 import dotenv from "dotenv";
+import { fileURLToPath } from "node:url";
 
-dotenv.config(); 
+dotenv.config({ path: fileURLToPath(new URL("../.env", import.meta.url)) });
 
 const { PGHOST, PGDATABASE, PGUSER, PGPASSWORD } = process.env;
 

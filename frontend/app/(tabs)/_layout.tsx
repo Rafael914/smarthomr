@@ -55,6 +55,16 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="pzemHistory"
+        options={{
+          title: 'History',
+          tabBarIcon: () => (
+            <Text style={{ fontSize: 20, textAlign: 'center' }}>📈</Text>
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="geofence"
         options={{
           title: 'Geofence',
@@ -64,15 +74,6 @@ export default function TabLayout() {
         }}
       />
 
-      <Tabs.Screen
-        name="chatbot"
-        options={{
-          title: 'Chatbot',
-          tabBarIcon: () => (
-            <Text style={{ fontSize: 20, textAlign: 'center' }}>🤖</Text>
-          ),
-        }}
-      />
     </Tabs>
   );
 }

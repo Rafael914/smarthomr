@@ -9,6 +9,14 @@ let relayState = {
     auto: false
 };
 
+export const forceRelayOff = (outletId) => {
+    const key = `relay${outletId}`;
+    if (Object.prototype.hasOwnProperty.call(relayState, key)) {
+        relayState[key] = false;
+        console.log(`Automatically turned off ${key}: energy cost limit reached.`);
+    }
+};
+
 export const getRelayState = async (req, res) => {
     try {
         res.status(200).json(relayState);

@@ -4,6 +4,19 @@ import { sql } from "../config/db.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
 
+export const initUsersTable = async () => {
+  await sql`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      username TEXT NOT NULL,
+      email TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  console.log("Users table initialized");
+};
+
 
 export const register = async (req, res) => {
   const { name, email, password } = req.body;
