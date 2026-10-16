@@ -4,6 +4,7 @@ import path from "path";
 const backendDir = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(backendDir, ".env") });
 import express from "express";
+import { createServer } from "node:http";
 import helmet from "helmet";
 import morgan from "morgan";
 import cors from "cors";
@@ -19,6 +20,7 @@ import { initGeofenceTable } from "./controller/geofenceController.js";
 import { initPzemReadingsTable } from "./controller/pzemController.js";
 import { initEnergyBudgetTable } from "./controller/energyBudgetController.js";
 import energyBudgetRoutes from "./routes/energyBudgetRoutes.js";
+import { attachPzemWebSocket } from "./services/pzemWebSocket.js";
 
 // ========================
 // LOAD ENV FIRST
@@ -26,6 +28,8 @@ import energyBudgetRoutes from "./routes/energyBudgetRoutes.js";
 
 
 const app = express();
+const server = createServer(app);
+attachPzemWebSocket(server);
 const PORT = process.env.PORT || 5000;
 
 // ========================
@@ -91,7 +95,7 @@ async function   initDB() {
 // START SERVER
 // ========================
 initDB().then(() => {
-  app.listen(PORT, "0.0.0.0", () => {
+  server.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 Server running at: http://192.168.137.1:${PORT}`);
   });
 });

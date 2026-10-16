@@ -6,10 +6,8 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
-  Alert,
 } from 'react-native';
 import axios from 'axios';
-import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useVoiceCommand } from '@/hooks/useVoiceCommand';
 import { BASE_URL } from '../utils/api';
@@ -51,7 +49,8 @@ function BluePrint() {
 
   const updateRelay = async (data: any) => {
     try {
-      await axios.post(`${BASE_URL}/api/relay`, data);
+      const token = await Storage.getItem('token');
+      await axios.post(`${BASE_URL}/api/relay`, data, { headers: { Authorization: `Bearer ${token}` } });
     } catch (error) {
       console.error("Update error:", error);
     }
@@ -65,9 +64,10 @@ function BluePrint() {
     const newValue = !value;
     setState(newValue);
     try {
+      const token = await Storage.getItem('token');
       await axios.post(`${BASE_URL}/api/relay`, {
         [relayKey]: newValue,
-      });
+      }, { headers: { Authorization: `Bearer ${token}` } });
     } catch (error) {
       console.error("Update error:", error);
       setState(value);
@@ -90,29 +90,6 @@ function BluePrint() {
     setRelay4(false);
     setRelay5(false);
     updateRelay({ relay1: false, relay2: false, relay3: false, relay4: false, relay5: false });
-  };
-
-  const handleLogout = async () => {
-    const performLogout = async () => {
-      try {
-        await Storage.removeItem('token');
-        await Storage.removeItem('userId');
-        router.replace('/auth/login');
-      } catch (error) {
-        console.error('Logout failed:', error);
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm('Are you sure you want to log out?')) {
-        performLogout();
-      }
-    } else {
-      Alert.alert('Confirm Logout', 'Are you sure you want to log out?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', style: 'destructive', onPress: performLogout },
-      ]);
-    }
   };
 
   useEffect(() => {
@@ -139,10 +116,6 @@ function BluePrint() {
         <View style={styles.viewHeader}>
           <View style={styles.headerTitleRow}>
             <Text style={styles.textHeader}>SCHEMATIC LAYOUT v5.0</Text>
-            <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.7}>
-              <Ionicons name="log-out-outline" size={16} color="#e74c3c" />
-              <Text style={styles.logoutText}>LOGOUT</Text>
-            </TouchableOpacity>
           </View>
           <Text style={styles.textSubHeader}>MULTI-LEVEL ELECTRICAL MATRIX</Text>
         </View>

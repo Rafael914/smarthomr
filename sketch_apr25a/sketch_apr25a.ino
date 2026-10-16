@@ -174,3 +174,25 @@ void loop() {
 
   delay(2000);
 }
+
+//THIS IS THE CODE WHERE YOU CAN SET THE ADDRESS OF THE PZEM004T MODULES.
+
+// #include <PZEM004Tv30.h>
+
+// PZEM004Tv30 pzem(Serial2, 16, 17);
+
+// void setup() {
+//   Serial.begin(115200);
+//   delay(1000);
+
+//   uint8_t newAddr = 0x01;
+
+//   if (pzem.setAddress(newAddr)) {
+//     Serial.println("Success");
+//   } else {
+//     Serial.println("Failed");
+//   }
+// }
+
+// void loop() {
+// }

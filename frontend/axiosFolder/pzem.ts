@@ -6,10 +6,20 @@ export type PzemHistoryItem = {
   total_kwh: string | number;
 };
 
+export type PzemRelayTotal = {
+  outlet_id: number;
+  total_kwh: string | number;
+};
+
 export type PzemHistoryResponse = {
   hourly: PzemHistoryItem[];
   daily: PzemHistoryItem[];
   monthly: PzemHistoryItem[];
+  relayTotals: {
+    hourly: PzemRelayTotal[];
+    daily: PzemRelayTotal[];
+    monthly: PzemRelayTotal[];
+  };
 };
 
 export const fetchPzem = async () => {

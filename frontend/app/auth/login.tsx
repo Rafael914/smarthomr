@@ -85,6 +85,7 @@ export default function Login() {
 
       await Storage.setItem("token", token);
       await Storage.setItem("userId", userId.toString());
+      await Storage.setItem("role", res.data.user?.role || "user");
 
 
       router.replace("/(tabs)");
@@ -132,7 +133,7 @@ export default function Login() {
 
             {/* EMAIL */}
             <TextInput
-              placeholder="Email Address"
+              placeholder="Username or Email Address"
               placeholderTextColor="#7c7c8a"
               style={styles.input}
               value={email}
@@ -192,7 +193,7 @@ export default function Login() {
 
             {/* REGISTER */}
             <TouchableOpacity onPress={() => router.push("/auth/register")}>
-              <Text style={styles.link}>{"Don't have an account? Sign Up"}</Text>
+              <Text style={styles.link}>Need access? Ask your administrator</Text>
             </TouchableOpacity>
 
           </View>

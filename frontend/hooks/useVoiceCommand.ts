@@ -6,6 +6,7 @@ import Voice, {
   SpeechResultsEvent,
 } from '@react-native-voice/voice';
 import { BASE_URL } from '../utils/api';
+import { Storage } from '../utils/storage';
 
 interface RelayCommand {
   relayNumber: number;
@@ -61,9 +62,10 @@ const parseVoiceCommand = (text: string): RelayCommand | null => {
 const executeRelayCommand = async (cmd: RelayCommand) => {
   const key = `relay${cmd.relayNumber}`;
 
+  const token = await Storage.getItem('token');
   await axios.post(`${BASE_URL}/api/relay`, {
     [key]: cmd.action === 'on',
-  });
+  }, { headers: { Authorization: `Bearer ${token}` } });
 };
 
 export const useVoiceCommand = () => {

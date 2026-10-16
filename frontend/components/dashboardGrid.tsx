@@ -10,7 +10,6 @@ import {
   Alert,
 } from "react-native";
 import axios from "axios";
-import { router } from "expo-router";
 import { Platform } from "react-native";
 import { BASE_URL } from "../utils/api";
 import { Storage } from "../utils/storage";
@@ -77,6 +76,7 @@ export default function DashboardGrid() {
   const [relayCosts, setRelayCosts] = useState<Record<string, number>>({});
   const [budgetSaving, setBudgetSaving] = useState(false);
 
+  //to load pzem readings on component mount
   const loadPzem = async () => {
   const data = await fetchPzem();
 
@@ -85,7 +85,46 @@ export default function DashboardGrid() {
 }
 
 useEffect(() => {
+  let disposed = false;
+  let socket: WebSocket | null = null;
+  let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+
   loadPzem();
+
+  const connectPzemSocket = () => {
+    if (disposed) return;
+
+    const socketBaseUrl = BASE_URL.replace(/^http/, "ws");
+    socket = new WebSocket(`${socketBaseUrl}/ws/pzem`);
+
+    socket.onmessage = (event) => {
+      try {
+        const message = JSON.parse(String(event.data));
+        if (message.type === "pzem_update" && Array.isArray(message.readings)) {
+          setPzemReadings(message.readings);
+          setPzemError(false);
+        }
+      } catch (error) {
+        console.error("Invalid PZEM WebSocket message:", error);
+      }
+    };
+
+    socket.onclose = () => {
+      if (!disposed) {
+        reconnectTimer = setTimeout(connectPzemSocket, 2000);
+      }
+    };
+
+    socket.onerror = () => socket?.close();
+  };
+
+  connectPzemSocket();
+
+  return () => {
+    disposed = true;
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    socket?.close();
+  };
 }, []);
 
   useEffect(() => {
@@ -115,12 +154,21 @@ useEffect(() => {
     relay5: false,
   });
 
+  const loadRelayStates = async () => {
+    const states = await fetchRelay();
+    if (states) {
+      setRelayStates(states);
+    }
+  };
 
 
   const toggleRelay = async (key: string, current: boolean) => {
-    setRelayStates((prev) => ({ ...prev, [key]: !current }));
+    const nextState = !current;
+    setRelayStates((prev) => ({ ...prev, [key]: nextState }));
     try {
-      await axios.post(`${BASE_URL}/api/relay`, { [key]: !current });
+      const token = await Storage.getItem("token");
+      await axios.post(`${BASE_URL}/api/relay`, { [key]: nextState }, { headers: { Authorization: `Bearer ${token}` } });
+      await loadRelayStates();
     } catch (error: any) {
       setRelayStates((prev) => ({ ...prev, [key]: current }));
       console.log("Relay Update Error:", error.message);
@@ -136,23 +184,20 @@ useEffect(() => {
       if (!sched.enabled) return;
 
       if (sched.onTime && currentTime === sched.onTime) {
-        axios.post(`${BASE_URL}/api/relay`, { [key]: true }).then(fetchRelay);
+        Storage.getItem("token").then((token) => axios.post(`${BASE_URL}/api/relay`, { [key]: true }, { headers: { Authorization: `Bearer ${token}` } })).then(loadRelayStates);
       }
       if (sched.offTime && currentTime === sched.offTime) {
-        axios.post(`${BASE_URL}/api/relay`, { [key]: false }).then(fetchRelay);
+        Storage.getItem("token").then((token) => axios.post(`${BASE_URL}/api/relay`, { [key]: false }, { headers: { Authorization: `Bearer ${token}` } })).then(loadRelayStates);
       }
     });
   };
 
   useEffect(() => {
-    fetchRelay();
-    fetchPzem();
-    const relayInterval = setInterval(fetchRelay, 3000);
-    const pzemInterval = setInterval(fetchPzem, 2000);
+    loadRelayStates();
+    const relayInterval = setInterval(loadRelayStates, 3000);
     const schedInterval = setInterval(checkSchedules, 30000);
     return () => {
       clearInterval(relayInterval);
-      clearInterval(pzemInterval);
       clearInterval(schedInterval);
     };
   }, [schedules]);
@@ -233,12 +278,6 @@ useEffect(() => {
     }
   };
 
-  const handleLogout = async () => {
-    await Storage.removeItem("token");
-    await Storage.removeItem("userId");
-    router.replace("/auth/login");
-  };
-
   const totalPower = pzemError ? 0 : pzemReadings.reduce((sum, r) => sum + (r.power || 0), 0);
   const totalEnergy = pzemError ? 0 : pzemReadings.reduce((sum, r) => sum + (r.energy || 0), 0);
 
@@ -252,9 +291,6 @@ useEffect(() => {
             <Text style={styles.headerTitle}>VoltGuard Smart Hub</Text>
             <Text style={styles.headerSub}>Real-Time Monitoring & Relay Controls</Text>
           </View>
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
-            <Text style={styles.logoutBtnText}>⏻  Logout</Text>
-          </TouchableOpacity>
         </View>
 
         {/* ── Relay Control Switches Grid ── */}

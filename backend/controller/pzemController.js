@@ -1,5 +1,6 @@
 import { sql } from "../config/db.js";
 import { recordEnergyUsage } from "./energyBudgetController.js";
+import { broadcastPzemReadings } from "../services/pzemWebSocket.js";
 
 // Memory storage for live monitoring
 let liveData = {
@@ -85,6 +86,8 @@ export const addReading = async (req, res) => {
           });
         }
       });
+
+      broadcastPzemReadings(getLiveReadings());
     }
 
     return res.status(200).json({ message: "Live data updated" });
@@ -99,19 +102,20 @@ export const addReading = async (req, res) => {
  * React Native calls this every 2 seconds for the dashboard view.
  */
 export const getAllLatestReadings = (req, res) => {
-  const dataArray = [
+  return res.json(getLiveReadings());
+};
+
+const getLiveReadings = () => [
     { outlet_id: 1, ...liveData.pzem1, outlet_name: "Outlet 1" },
     { outlet_id: 2, ...liveData.pzem2, outlet_name: "Outlet 2" },
     { outlet_id: 3, ...liveData.pzem3, outlet_name: "Outlet 3" },
     { outlet_id: 4, ...liveData.pzem4, outlet_name: "Outlet 4" },
     { outlet_id: 5, ...liveData.pzem5, outlet_name: "Outlet 5" },
   ];
-  return res.json(dataArray);
-};
 
 export const getPzemHistory = async (req, res) => {
   try {
-    const [hourly, daily, monthly] = await Promise.all([
+    const [hourly, daily, monthly, relayHourly, relayDaily, relayMonthly] = await Promise.all([
       sql`
         SELECT
           date_trunc('hour', recorded_at) AS period,
@@ -139,9 +143,35 @@ export const getPzemHistory = async (req, res) => {
         GROUP BY 1
         ORDER BY period DESC
       `,
+      sql`
+        SELECT outlet_id, SUM(hourly_used_kwh) AS total_kwh
+        FROM readings
+        WHERE recorded_at >= NOW() - INTERVAL '24 hours'
+        GROUP BY outlet_id
+        ORDER BY outlet_id
+      `,
+      sql`
+        SELECT outlet_id, SUM(hourly_used_kwh) AS total_kwh
+        FROM readings
+        WHERE recorded_at >= date_trunc('day', NOW())
+        GROUP BY outlet_id
+        ORDER BY outlet_id
+      `,
+      sql`
+        SELECT outlet_id, SUM(hourly_used_kwh) AS total_kwh
+        FROM readings
+        WHERE recorded_at >= date_trunc('month', NOW()) - INTERVAL '11 months'
+        GROUP BY outlet_id
+        ORDER BY outlet_id
+      `,
     ]);
 
-    return res.json({ hourly, daily, monthly });
+    return res.json({
+      hourly,
+      daily,
+      monthly,
+      relayTotals: { hourly: relayHourly, daily: relayDaily, monthly: relayMonthly },
+    });
   } catch (error) {
     console.error("PZEM history error:", error);
     return res.status(500).json({ message: "Unable to load PZEM history" });
