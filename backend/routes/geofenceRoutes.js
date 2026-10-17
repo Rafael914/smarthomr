@@ -1,5 +1,6 @@
 // geofenceRoutes.js
 import express from "express";
+import { authenticate, requireAdmin } from "../controller/authController.js";
 import {
   getGeofenceSettings,
   setHomeLocation,
@@ -9,6 +10,9 @@ import {
 } from "../controller/geofenceController.js";
 
 const router = express.Router();
+
+// Geofence settings and relay automation are controlled by the administrator.
+router.use(authenticate, requireAdmin);
 
 // Get geofence settings for a user
 router.get("/settings/:userId", getGeofenceSettings);

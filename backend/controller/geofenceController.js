@@ -26,7 +26,7 @@ export const initGeofenceTable = async () => {
 // Get geofence settings for a user
 export const getGeofenceSettings = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const userId = req.user.id;
 
     const result = await sql`
       SELECT * FROM geofence_settings WHERE user_id = ${userId}
@@ -51,7 +51,8 @@ export const getGeofenceSettings = async (req, res) => {
 // Set or update home location
 export const setHomeLocation = async (req, res) => {
   try {
-    const { userId, latitude, longitude } = req.body;
+    const { latitude, longitude } = req.body;
+    const userId = req.user.id;
 
     if (!userId || latitude === undefined || longitude === undefined) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -104,7 +105,8 @@ export const setHomeLocation = async (req, res) => {
 // Toggle geofence feature
 export const toggleGeofence = async (req, res) => {
   try {
-    const { userId, enabled } = req.body;
+    const { enabled } = req.body;
+    const userId = req.user.id;
 
     if (!userId || enabled === undefined) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -145,7 +147,8 @@ export const toggleGeofence = async (req, res) => {
 // Check distance and enforce geofence
 export const checkGeofenceDistance = async (req, res) => {
   try {
-    const { userId, currentLatitude, currentLongitude } = req.body;
+    const { currentLatitude, currentLongitude } = req.body;
+    const userId = req.user.id;
 
     if (!userId || currentLatitude === undefined || currentLongitude === undefined) {
       return res.status(400).json({ error: "Missing required fields" });
@@ -230,7 +233,8 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 // Update geofence radius
 export const updateRadius = async (req, res) => {
   try {
-    const { userId, radiusMeters } = req.body;
+    const { radiusMeters } = req.body;
+    const userId = req.user.id;
 
     if (!userId || radiusMeters === undefined) {
       return res.status(400).json({ error: "Missing required fields" });
