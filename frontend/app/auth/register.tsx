@@ -39,6 +39,10 @@ export default function Register() {
 
   const createAccount = async () => {
     setError('');
+    if (password.length < 6 || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+      setError('Password must be at least 6 characters and include one capital letter and one number.');
+      return;
+    }
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
       return;
@@ -82,7 +86,8 @@ export default function Register() {
       <Text style={styles.heading}>Create account</Text>
       <TextInput style={styles.input} placeholder="Full name" placeholderTextColor="#8392a5" value={name} onChangeText={setName} />
       <TextInput style={styles.input} placeholder="Email address" placeholderTextColor="#8392a5" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
-      <TextInput style={styles.input} placeholder="Password (6+ characters)" placeholderTextColor="#8392a5" secureTextEntry value={password} onChangeText={setPassword} />
+      <TextInput style={styles.input} placeholder="Password (6+ chars, capital letter, number)" placeholderTextColor="#8392a5" secureTextEntry value={password} onChangeText={setPassword} />
+      <Text style={styles.passwordHint}>Use at least 6 characters, including one capital letter and one number.</Text>
       <TextInput style={styles.input} placeholder="Confirm password" placeholderTextColor="#8392a5" secureTextEntry value={confirmPassword} onChangeText={setConfirmPassword} onSubmitEditing={createAccount} />
       <Text style={styles.fieldLabel}>Account role</Text>
       <View style={styles.rolePicker}>
@@ -111,7 +116,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: '#111e2c', borderColor: '#193148', borderWidth: 1, borderRadius: 16, padding: 18, marginBottom: 16 },
   heading: { color: '#fff', fontSize: 18, fontWeight: '700', marginBottom: 14 }, input: { backgroundColor: '#0b1723', color: '#fff', padding: 13, borderRadius: 10, marginBottom: 10, borderColor: '#263b50', borderWidth: 1 },
   fieldLabel: { color: '#cbd5e1', fontWeight: '700', marginTop: 4, marginBottom: 8 }, rolePicker: { flexDirection: 'row', gap: 10, marginBottom: 12 }, roleOption: { flex: 1, borderColor: '#263b50', borderWidth: 1, borderRadius: 10, padding: 12, alignItems: 'center' }, roleOptionSelected: { borderColor: '#6ee7b7', backgroundColor: '#12352e' }, roleOptionText: { color: '#9ca3af', fontWeight: '700' }, roleOptionTextSelected: { color: '#6ee7b7' },
-  button: { backgroundColor: '#6ee7b7', padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 4 }, buttonText: { color: '#062018', fontWeight: '800' }, error: { color: '#f87171', marginBottom: 10 },
+  passwordHint: { color: '#9ca3af', fontSize: 12, marginTop: -4, marginBottom: 10 }, button: { backgroundColor: '#6ee7b7', padding: 14, borderRadius: 10, alignItems: 'center', marginTop: 4 }, buttonText: { color: '#062018', fontWeight: '800' }, error: { color: '#f87171', marginBottom: 10 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderTopColor: '#263b50', borderTopWidth: 1 }, accountDetails: { flex: 1 }, accountName: { color: '#fff', fontWeight: '700' }, accountEmail: { color: '#9ca3af', marginTop: 3 }, role: { color: '#6ee7b7', textTransform: 'capitalize', fontWeight: '700', marginTop: 3 },
   deleteButton: { borderColor: '#7f1d1d', borderWidth: 1, backgroundColor: '#2b1117', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, marginLeft: 12 }, deleteText: { color: '#fca5a5', fontWeight: '700' },
 });

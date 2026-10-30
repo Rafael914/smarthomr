@@ -17,11 +17,13 @@ export const saveEnergyBudget = async (
   ratePerKwh: number,
   limits: Record<string, number>,
   resetCosts: boolean,
+  resetCostFor?: string,
 ): Promise<EnergyBudget> => {
   const response = await axios.put(`${BASE_URL}/api/energy-budget`, {
     ratePerKwh,
     limits,
     resetCosts,
+    resetCostFor,
   });
   return response.data;
 };

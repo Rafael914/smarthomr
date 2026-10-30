@@ -6,6 +6,7 @@ import {
   Text,
   Switch,
   TouchableOpacity,
+  TextInput,
   ActivityIndicator,
   Alert,
   ScrollView,
@@ -41,6 +42,8 @@ export const GeofenceSettings: React.FC = () => {
   const [loadingHome, setLoadingHome] = useState(false);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [loadingToggle, setLoadingToggle] = useState(false);
+  const [customRadius, setCustomRadius] = useState("500");
+  const [savingRadius, setSavingRadius] = useState(false);
 
   const [currentLocation, setCurrentLocation] = useState<{
     latitude: number;
@@ -80,7 +83,10 @@ export const GeofenceSettings: React.FC = () => {
   const loadGeofenceSettings = async () => {
     try {
       const status = await checkGeofenceStatus();
-      if (status) setSettings(status);
+      if (status) {
+        setSettings(status);
+        setCustomRadius(String(status.radius_meters));
+      }
     } catch (error) {
       console.error("Error loading geofence settings:", error);
     }
@@ -229,9 +235,25 @@ export const GeofenceSettings: React.FC = () => {
       );
 
       setSettings((prev) => ({ ...prev, radius_meters: newRadius }));
+      setCustomRadius(String(newRadius));
       Alert.alert("✅ Success", `Geofence radius updated to ${newRadius}m`);
     } catch {
       Alert.alert("Error", "Failed to update radius");
+    }
+  };
+
+  const handleSaveCustomRadius = async () => {
+    const radius = Number(customRadius);
+    if (!Number.isInteger(radius) || radius < 10 || radius > 50000) {
+      Alert.alert("Invalid distance", "Enter a whole number from 10 to 50000 meters.");
+      return;
+    }
+
+    setSavingRadius(true);
+    try {
+      await handleUpdateRadius(radius);
+    } finally {
+      setSavingRadius(false);
     }
   };
 
@@ -383,6 +405,33 @@ export const GeofenceSettings: React.FC = () => {
                 </Text>
               </TouchableOpacity>
             ))}
+          </View>
+          <Text style={styles.description}>
+            Or enter a custom distance (10–50000 meters).
+          </Text>
+          <View style={styles.customRadiusRow}>
+            <TextInput
+              accessibilityLabel="Custom geofence distance in meters"
+              style={styles.customRadiusInput}
+              value={customRadius}
+              onChangeText={(value) => setCustomRadius(value.replace(/[^0-9]/g, ""))}
+              keyboardType="number-pad"
+              inputMode="numeric"
+              placeholder="Distance in meters"
+              placeholderTextColor="#777"
+              maxLength={5}
+            />
+            <TouchableOpacity
+              style={[styles.radiusSaveButton, savingRadius && styles.buttonDisabled]}
+              onPress={handleSaveCustomRadius}
+              disabled={savingRadius}
+            >
+              {savingRadius ? (
+                <ActivityIndicator color="#0a0a0f" />
+              ) : (
+                <Text style={styles.buttonText}>Set distance</Text>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
 

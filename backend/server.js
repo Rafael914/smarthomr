@@ -10,6 +10,7 @@ import morgan from "morgan";
 import cors from "cors";
 
 import relayRoutes from "./routes/relayRoutes.js";
+import { initRelayStateTable } from "./controller/relayController.js";
 import pzemRoutes from "./routes/pzemRoutes.js"
 // import { aj } from "./lib/arcjet.js";
 import { sql } from "./config/db.js";
@@ -86,6 +87,7 @@ app.get("/", (req, res) => {
 
 async function   initDB() {
   await initUsersTable();
+  await initRelayStateTable();
   await initGeofenceTable();
   await initPzemReadingsTable();
   await initEnergyBudgetTable();

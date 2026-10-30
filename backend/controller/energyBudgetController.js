@@ -119,11 +119,20 @@ export const updateEnergyBudget = async (req, res) => {
     budget.tripped = Object.fromEntries(relayKeys.map((key) => [key, false]));
   }
 
+  const resetCostFor = req.body?.resetCostFor;
+  if (resetCostFor !== undefined) {
+    if (!relayKeys.includes(resetCostFor)) {
+      return res.status(400).json({ message: "resetCostFor must identify a valid relay." });
+    }
+    budget.costs[resetCostFor] = 0;
+    budget.tripped[resetCostFor] = false;
+  }
+
   try {
     for (const key of relayKeys) {
       if (budget.limits[key] > 0 && budget.costs[key] >= budget.limits[key]) {
         budget.tripped[key] = true;
-        forceRelayOff(Number(key.replace("relay", "")));
+        await forceRelayOff(Number(key.replace("relay", "")));
       }
     }
     await persistBudget();
@@ -152,7 +161,7 @@ export const recordEnergyUsage = async (outletId, energyKwh) => {
   const limit = numericValue(budget.limits[key]);
   if (limit > 0 && budget.costs[key] >= limit) {
     budget.tripped[key] = true;
-    forceRelayOff(outletId);
+    await forceRelayOff(outletId);
   }
 
   await persistBudget();

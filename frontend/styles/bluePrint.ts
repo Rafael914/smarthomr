@@ -185,6 +185,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: '#00ffff',
   },
+  mainEntryRow: {
+    flex: 1.2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    backgroundColor: '#00294d',
+    borderBottomWidth: 2,
+    borderBottomColor: '#00ffff',
+  },
+  firstFloorRoomStack: {
+    flex: 3.8,
+    flexDirection: 'column-reverse',
+  },
+  firstFloorRoom: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+    backgroundColor: '#002240',
+    borderBottomWidth: 1,
+    borderBottomColor: '#00ffff',
+  },
   exteriorRowContainer: {
     flex: 1.2,
     alignItems: 'center',

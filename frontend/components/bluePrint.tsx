@@ -209,9 +209,9 @@ function BluePrint() {
             {activeFloor === 1 ? (
               /* ════════════════ FIRST FLOOR VIEWPORT ════════════════ */
               <View style={styles.viewportContainer}>
-                <View style={styles.interiorGridRow}>
+                <View style={styles.firstFloorRoomStack}>
                   {/* LIVING ROOM */}
-                  <View style={[styles.roomContainer, styles.borderRight, relay1 && styles.roomActive]}>
+                  <View style={[styles.firstFloorRoom, relay1 && styles.roomActive]}>
                     <Text style={[styles.roomLabel, relay1 && styles.textCyan]}>LIVING AREA</Text>
                     <Text style={styles.dimensionText}>4.50m x 4.00m</Text>
                     <TouchableOpacity
@@ -225,8 +225,8 @@ function BluePrint() {
                   </View>
 
                   {/* KITCHEN / DINING */}
-                  <View style={[styles.roomContainer, relay2 && styles.roomActive]}>
-                    <Text style={[styles.roomLabel, relay2 && styles.textCyan]}>KITCHEN / DI</Text>
+                  <View style={[styles.firstFloorRoom, relay2 && styles.roomActive]}>
+                    <Text style={[styles.roomLabel, relay2 && styles.textCyan]}>KITCHEN / DINING</Text>
                     <Text style={styles.dimensionText}>3.20m x 4.00m</Text>
                     <TouchableOpacity
                       style={[styles.powerBtn, relay2 && styles.powerBtnActive]}

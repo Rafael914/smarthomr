@@ -243,8 +243,8 @@ export const updateRadius = async (req, res) => {
     // BUG FIX: parse to int so "250" string from request body doesn't slip through
     const radius = parseInt(radiusMeters, 10);
 
-    if (isNaN(radius) || radius < 50 || radius > 50000) {
-      return res.status(400).json({ error: "Radius must be a number between 50 and 50000 meters" });
+    if (isNaN(radius) || radius < 10 || radius > 50000) {
+      return res.status(400).json({ error: "Radius must be a number between 10 and 50000 meters" });
     }
 
     const result = await sql`

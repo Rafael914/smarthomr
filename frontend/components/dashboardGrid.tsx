@@ -167,11 +167,22 @@ useEffect(() => {
     setRelayStates((prev) => ({ ...prev, [key]: nextState }));
     try {
       const token = await Storage.getItem("token");
-      await axios.post(`${BASE_URL}/api/relay`, { [key]: nextState }, { headers: { Authorization: `Bearer ${token}` } });
+      if (!token) {
+        throw new Error("Your session has expired. Sign in again to control relays.");
+      }
+
+      await axios.post(
+        `${BASE_URL}/api/relay`,
+        { [key]: nextState },
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 },
+      );
       await loadRelayStates();
     } catch (error: any) {
       setRelayStates((prev) => ({ ...prev, [key]: current }));
-      console.log("Relay Update Error:", error.message);
+      const message = error?.response?.data?.message || error?.message || "Could not update the relay.";
+      console.error("Relay Update Error:", error?.response?.data || error.message);
+      if (Platform.OS === "web") alert(message);
+      else Alert.alert("Relay control failed", message);
     }
   };
 
@@ -247,7 +258,7 @@ useEffect(() => {
     setModalVisible(false);
   };
 
-  const saveBudget = async (resetCosts = false) => {
+  const saveBudget = async (resetCosts = false, resetCostFor?: string) => {
     const rate = Number(ratePerKwh);
     const limits = Object.fromEntries(
       budgetRelayKeys.map((key) => [key, Number(relayLimits[key] || 0)]),
@@ -262,13 +273,8 @@ useEffect(() => {
 
     setBudgetSaving(true);
     try {
-      const budget = await saveEnergyBudget(rate, limits, resetCosts);
+      const budget = await saveEnergyBudget(rate, limits, resetCosts, resetCostFor);
       setRelayCosts(budget.costs || {});
-      if (resetCosts) {
-        const message = "Relay cost counters were reset.";
-        if (Platform.OS === "web") alert(message);
-        else Alert.alert("Budget", message);
-      }
     } catch (error: any) {
       const message = error?.response?.data?.message || "Unable to save the energy budget.";
       if (Platform.OS === "web") alert(message);
@@ -400,9 +406,18 @@ useEffect(() => {
                   keyboardType="decimal-pad"
                   style={{ width: 100, backgroundColor: "#1f2937", color: "#fff", borderRadius: 8, padding: 8 }}
                 />
-                <Text style={{ color: "#9ca3af", width: 90, textAlign: "right" }}>
-                  PHP {(relayCosts[relay.id] || 0).toFixed(2)}
-                </Text>
+                <View style={{ width: 90, alignItems: "flex-end" }}>
+                  <Text style={{ color: "#9ca3af", textAlign: "right" }}>
+                    PHP {(relayCosts[relay.id] || 0).toFixed(2)}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => saveBudget(false, relay.id)}
+                    disabled={budgetSaving}
+                    style={{ marginTop: 4, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 5, backgroundColor: "#374151", opacity: budgetSaving ? 0.5 : 1 }}
+                  >
+                    <Text style={{ color: "#d1d5db", fontSize: 11, fontWeight: "600" }}>Reset</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))}
 

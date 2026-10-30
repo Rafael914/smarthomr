@@ -68,7 +68,12 @@ export const createUser = async (req, res) => {
   if (!['user', 'admin'].includes(role)) {
     return res.status(400).json({ success: false, message: "Role must be user or admin" });
   }
-  if (password.length < 6) return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+  if (password.length < 6 || !/[A-Z]/.test(password) || !/\d/.test(password)) {
+    return res.status(400).json({
+      success: false,
+      message: "Password must be at least 6 characters and include one capital letter and one number",
+    });
+  }
   try {
     const cleanEmail = email.trim().toLowerCase();
     const passwordHash = await bcrypt.hash(password, 12);

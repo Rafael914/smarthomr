@@ -157,6 +157,33 @@ const styles = StyleSheet.create({
   radiusButtonTextActive: {
     color: "#0a0a0f",
   },
+  customRadiusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 8,
+  },
+  customRadiusInput: {
+    flex: 1,
+    minWidth: 0,
+    backgroundColor: "#0a0a0f",
+    borderWidth: 1,
+    borderColor: "#3e3e42",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    color: "#ffffff",
+    fontSize: 14,
+  },
+  radiusSaveButton: {
+    backgroundColor: "#00d4ff",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 112,
+  },
   infoBox: {
     backgroundColor: "#1a2a3f",
     borderLeftWidth: 3,
