@@ -6,20 +6,11 @@ export type PzemHistoryItem = {
   total_kwh: string | number;
 };
 
-export type PzemRelayTotal = {
-  outlet_id: number;
-  total_kwh: string | number;
-};
-
 export type PzemHistoryResponse = {
   hourly: PzemHistoryItem[];
   daily: PzemHistoryItem[];
   monthly: PzemHistoryItem[];
-  relayTotals: {
-    hourly: PzemRelayTotal[];
-    daily: PzemRelayTotal[];
-    monthly: PzemRelayTotal[];
-  };
+  selectedDay?: PzemHistoryItem;
 };
 
 export const fetchPzem = async () => {
@@ -46,8 +37,9 @@ export const fetchPzem = async () => {
   }
 };
 
-export const fetchPzemHistory = async (): Promise<PzemHistoryResponse> => {
+export const fetchPzemHistory = async (date?: string): Promise<PzemHistoryResponse> => {
   const res = await axios.get(`${BASE_URL}/api/pzem/history`, {
+    params: date ? { date } : undefined,
     timeout: 5000,
   });
 

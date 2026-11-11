@@ -19,14 +19,15 @@ import { fetchEnergyBudget, saveEnergyBudget } from "../axiosFolder/energyBudget
 import { Ionicons } from "@expo/vector-icons";
 
 
-// Expanded CONFIG to 5 channels
+type IconName = React.ComponentProps<typeof Ionicons>["name"];
+
 const RELAY_CONFIG = [
   { id: "relay1", label: "Living Area", icon: "home-outline" },
   { id: "relay2", label: "Kitchen", icon: "restaurant-outline" },
   { id: "relay3", label: "Bedroom", icon: "bed-outline" },
   { id: "relay4", label: "MEDIA ROOM", icon: "tv-outline" },
   { id: "relay5", label: "Front Balcony", icon: "sunny-outline" },
-];
+] satisfies Array<{ id: string; label: string; icon: IconName }>;
 
 type Schedule = {
   onTime: string;
@@ -34,7 +35,6 @@ type Schedule = {
   enabled: boolean;
 };
 
-// Expanded Types to 5 channels
 type Schedules = {
   relay1: Schedule;
   relay2: Schedule;
@@ -54,12 +54,16 @@ type PzemReading = {
   pf: number;
 };
 
-const budgetRelayKeys = ["relay1", "relay2", "relay3", "relay4", "relay5"];
+const ELECTRICAL_STANDARD = {
+  minVoltage: 207,
+  maxVoltage: 253,
+  minFrequency: 59,
+  maxFrequency: 61,
+  minPowerFactor: 0.8,
+  maxCurrent: 50,
+};
 
 export default function DashboardGrid() {
-
-
-
   const [schedules, setSchedules] = useState<Schedules>({
     relay1: { onTime: "", offTime: "", enabled: false },
     relay2: { onTime: "", offTime: "", enabled: false },
@@ -71,73 +75,62 @@ export default function DashboardGrid() {
   const [pzemReadings, setPzemReadings] = useState<PzemReading[]>([]);
   const [pzemError, setPzemError] = useState(false);
   const [ratePerKwh, setRatePerKwh] = useState("");
-  const [relayLimits, setRelayLimits] = useState<Record<string, string>>(
-    Object.fromEntries(budgetRelayKeys.map((key) => [key, ""])),
-  );
-  const [relayCosts, setRelayCosts] = useState<Record<string, number>>({});
   const [budgetSaving, setBudgetSaving] = useState(false);
 
-  //to load pzem readings on component mount
   const loadPzem = async () => {
-  const data = await fetchPzem();
+    const data = await fetchPzem();
 
-  setPzemReadings(data.readings);
-  setPzemError(data.error);
-}
+    setPzemReadings(data.readings);
+    setPzemError(data.error);
+  };
 
-useEffect(() => {
-  let disposed = false;
-  let socket: WebSocket | null = null;
-  let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
+  useEffect(() => {
+    let disposed = false;
+    let socket: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
-  loadPzem();
+    loadPzem();
 
-  const connectPzemSocket = () => {
-    if (disposed) return;
+    const connectPzemSocket = () => {
+      if (disposed) return;
 
-    const socketBaseUrl = BASE_URL.replace(/^http/, "ws");
-    socket = new WebSocket(`${socketBaseUrl}/ws/pzem`);
+      const socketBaseUrl = BASE_URL.replace(/^http/, "ws");
+      socket = new WebSocket(`${socketBaseUrl}/ws/pzem`);
 
-    socket.onmessage = (event) => {
-      try {
-        const message = JSON.parse(String(event.data));
-        if (message.type === "pzem_update" && Array.isArray(message.readings)) {
-          setPzemReadings(message.readings);
-          setPzemError(false);
+      socket.onmessage = (event) => {
+        try {
+          const message = JSON.parse(String(event.data));
+          if (message.type === "pzem_update" && Array.isArray(message.readings)) {
+            setPzemReadings(message.readings);
+            setPzemError(false);
+          }
+        } catch (error) {
+          console.error("Invalid PZEM WebSocket message:", error);
         }
-      } catch (error) {
-        console.error("Invalid PZEM WebSocket message:", error);
-      }
+      };
+
+      socket.onclose = () => {
+        if (!disposed) {
+          reconnectTimer = setTimeout(connectPzemSocket, 2000);
+        }
+      };
+
+      socket.onerror = () => socket?.close();
     };
 
-    socket.onclose = () => {
-      if (!disposed) {
-        reconnectTimer = setTimeout(connectPzemSocket, 2000);
-      }
+    connectPzemSocket();
+
+    return () => {
+      disposed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      socket?.close();
     };
-
-    socket.onerror = () => socket?.close();
-  };
-
-  connectPzemSocket();
-
-  return () => {
-    disposed = true;
-    if (reconnectTimer) clearTimeout(reconnectTimer);
-    socket?.close();
-  };
-}, []);
+  }, []);
 
   useEffect(() => {
     fetchEnergyBudget()
       .then((budget) => {
         setRatePerKwh(String(budget.ratePerKwh || ""));
-        setRelayLimits(
-          Object.fromEntries(
-            budgetRelayKeys.map((key) => [key, budget.limits[key] ? String(budget.limits[key]) : ""]),
-          ),
-        );
-        setRelayCosts(budget.costs || {});
       })
       .catch((error) => console.log("Energy budget fetch error:", error.message));
   }, []);
@@ -259,14 +252,11 @@ useEffect(() => {
     setModalVisible(false);
   };
 
-  const saveBudget = async (resetCosts = false, resetCostFor?: string) => {
+  const saveRate = async () => {
     const rate = Number(ratePerKwh);
-    const limits = Object.fromEntries(
-      budgetRelayKeys.map((key) => [key, Number(relayLimits[key] || 0)]),
-    );
 
-    if (!Number.isFinite(rate) || rate < 0 || Object.values(limits).some((limit) => !Number.isFinite(limit) || limit < 0)) {
-      const message = "Enter non-negative numbers for the rate and relay limits.";
+    if (!Number.isFinite(rate) || rate < 0) {
+      const message = "Enter a non-negative electricity rate.";
       if (Platform.OS === "web") alert(message);
       else Alert.alert("Validation Error", message);
       return;
@@ -274,8 +264,7 @@ useEffect(() => {
 
     setBudgetSaving(true);
     try {
-      const budget = await saveEnergyBudget(rate, limits, resetCosts, resetCostFor);
-      setRelayCosts(budget.costs || {});
+      await saveEnergyBudget(rate, {}, false);
     } catch (error: any) {
       const message = error?.response?.data?.message || "Unable to save the energy budget.";
       if (Platform.OS === "web") alert(message);
@@ -285,14 +274,37 @@ useEffect(() => {
     }
   };
 
-  const totalPower = pzemError ? 0 : pzemReadings.reduce((sum, r) => sum + (r.power || 0), 0);
-  const totalEnergy = pzemError ? 0 : pzemReadings.reduce((sum, r) => sum + (r.energy || 0), 0);
+  const mainReading = !pzemError ? pzemReadings[0] : undefined;
+  const totalPower = Number(mainReading?.power) || 0;
+  const totalEnergy = Number(mainReading?.energy) || 0;
+  const estimatedHourlyCost = (totalPower / 1000) * (Number(ratePerKwh) || 0);
+  const voltage = Number(mainReading?.voltage) || 0;
+  const current = Number(mainReading?.current) || 0;
+  const frequency = Number(mainReading?.frequency) || 0;
+  const powerFactor = Number(mainReading?.pf) || 0;
+  const standardAlerts = [
+    voltage > 0 && voltage < ELECTRICAL_STANDARD.minVoltage ? "Undervoltage" : "",
+    voltage > ELECTRICAL_STANDARD.maxVoltage ? "Overvoltage" : "",
+    frequency > 0 && frequency < ELECTRICAL_STANDARD.minFrequency ? "Low frequency" : "",
+    frequency > ELECTRICAL_STANDARD.maxFrequency ? "High frequency" : "",
+    powerFactor > 0 && powerFactor < ELECTRICAL_STANDARD.minPowerFactor ? "Low power factor" : "",
+    current > ELECTRICAL_STANDARD.maxCurrent ? "Main breaker current exceeded" : "",
+  ].filter(Boolean);
+  const standardAlertKey = standardAlerts.join("|");
+  const [lastAlertKey, setLastAlertKey] = useState("");
+
+  useEffect(() => {
+    if (!standardAlertKey || standardAlertKey === lastAlertKey) return;
+    setLastAlertKey(standardAlertKey);
+    const message = standardAlerts.join("\n");
+    if (Platform.OS === "web") alert(message);
+    else Alert.alert("Electrical standard exceeded", message);
+  }, [standardAlertKey, lastAlertKey]);
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContent} style={styles.rootScrollView}>
       <View style={styles.mainContainer}>
         
-        {/* ── Header ── */}
         <View style={styles.header}>
           <View style={styles.headerTextGroup}>
             <Text style={styles.headerTitle}>VoltGuard Smart Hub</Text>
@@ -300,7 +312,6 @@ useEffect(() => {
           </View>
         </View>
 
-        {/* ── Relay Control Switches Grid ── */}
         <View style={styles.grid}>
           {RELAY_CONFIG.map((relay) => {
             const isOn = relayStates[relay.id as keyof typeof relayStates];
@@ -365,25 +376,23 @@ useEffect(() => {
           })}
         </View>
 
-        {/*  Section Title: Energy Monitoring  */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Power Telemetry</Text>
-          <Text style={styles.sectionSub}>Live metrics from individual PZEM modules</Text>
+          <Text style={styles.sectionTitle}>Main Breaker Monitoring</Text>
+          <Text style={styles.sectionSub}>Live whole-house metrics from the main breaker PZEM</Text>
         </View>
 
-        {/*  Summary Cards Block  */}
         <View style={styles.summaryRow}>
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Combined Load</Text>
+            <Text style={styles.summaryLabel}>Whole-house Load</Text>
             <Text style={styles.summaryValue}>{totalPower.toFixed(1)}<Text style={styles.summaryUnit}> W</Text></Text>
           </View>
 
-          <View style={{ backgroundColor: "#172033", borderRadius: 14, padding: 16, marginBottom: 20 }}>
+          <View style={{ backgroundColor: "#172033", borderRadius: 14, padding: 16, marginBottom: 20, flexGrow: 1, minWidth: 280 }}>
             <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700", marginBottom: 4 }}>
-              Energy Cost Limits
+              Whole-house electricity cost
             </Text>
             <Text style={{ color: "#9ca3af", marginBottom: 12 }}>
-              Set your electricity rate in pesos per kWh. A relay turns off automatically when its limit is reached.
+              Set your rate to estimate the running cost of the main breaker load.
             </Text>
 
             <Text style={{ color: "#d1d5db", marginBottom: 5 }}>Rate (PHP per kWh)</Text>
@@ -395,62 +404,51 @@ useEffect(() => {
               keyboardType="decimal-pad"
               style={{ backgroundColor: "#1f2937", color: "#fff", borderRadius: 8, padding: 10, marginBottom: 10 }}
             />
-
-            {RELAY_CONFIG.map((relay) => (
-              <View key={relay.id} style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
-                <Text style={{ color: "#d1d5db", flex: 1 }}>{relay.label} limit (PHP)</Text>
-                <TextInput
-                  value={relayLimits[relay.id]}
-                  onChangeText={(value) => setRelayLimits((previous) => ({ ...previous, [relay.id]: value }))}
-                  placeholder="0 = off"
-                  placeholderTextColor="#6b7280"
-                  keyboardType="decimal-pad"
-                  style={{ width: 100, backgroundColor: "#1f2937", color: "#fff", borderRadius: 8, padding: 8 }}
-                />
-                <View style={{ width: 90, alignItems: "flex-end" }}>
-                  <Text style={{ color: "#9ca3af", textAlign: "right" }}>
-                    PHP {(relayCosts[relay.id] || 0).toFixed(2)}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={() => saveBudget(false, relay.id)}
-                    disabled={budgetSaving}
-                    style={{ marginTop: 4, paddingVertical: 3, paddingHorizontal: 8, borderRadius: 5, backgroundColor: "#374151", opacity: budgetSaving ? 0.5 : 1 }}
-                  >
-                    <Text style={{ color: "#d1d5db", fontSize: 11, fontWeight: "600" }}>Reset</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
-
-            <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
-              <TouchableOpacity
-                onPress={() => saveBudget(false)}
-                disabled={budgetSaving}
-                style={{ backgroundColor: "#16a34a", borderRadius: 8, padding: 11, flex: 1 }}
-              >
-                <Text style={{ color: "#fff", textAlign: "center", fontWeight: "700" }}>
-                  {budgetSaving ? "Saving..." : "Save Limits"}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => saveBudget(true)}
-                disabled={budgetSaving}
-                style={{ backgroundColor: "#374151", borderRadius: 8, padding: 11, flex: 1 }}
-              >
-                <Text style={{ color: "#fff", textAlign: "center", fontWeight: "700" }}>Reset Costs</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={{ color: "#9ca3af", fontSize: 12, marginBottom: 10 }}>
+              Current estimate: <Text style={{ color: "#6ee7b7", fontWeight: "700" }}>PHP {estimatedHourlyCost.toFixed(2)} / hour</Text>
+            </Text>
+            <TouchableOpacity
+              onPress={saveRate}
+              disabled={budgetSaving}
+              style={{ backgroundColor: "#16a34a", borderRadius: 8, padding: 11 }}
+            >
+              <Text style={{ color: "#fff", textAlign: "center", fontWeight: "700" }}>
+                {budgetSaving ? "Saving..." : "Save electricity rate"}
+              </Text>
+            </TouchableOpacity>
           </View>
           <View style={styles.summaryCard}>
-            <Text style={styles.summaryLabel}>Aggregated Total</Text>
+            <Text style={styles.summaryLabel}>Whole-house Energy</Text>
             <Text style={styles.summaryValue}>{totalEnergy.toFixed(3)}<Text style={styles.summaryUnit}> kWh</Text></Text>
           </View>
         </View>
 
-        {/* ── 5x Real-Time PZEM Cards Grid (Dynamically follows RELAY_CONFIG array length) ── */}
+        <View style={{ backgroundColor: "#172033", borderRadius: 14, padding: 16, marginBottom: 20 }}>
+          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+            <View>
+              <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700" }}>Electrical standard</Text>
+              <Text style={{ color: "#9ca3af", marginTop: 4 }}>Automatic alerts for abnormal main-breaker readings</Text>
+            </View>
+            <View style={{ backgroundColor: standardAlerts.length ? "#991b1b" : "#166534", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
+              <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>{standardAlerts.length ? "Warning" : "Normal"}</Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
+            <Text style={{ color: "#cbd5e1", fontSize: 12 }}>Voltage: 207–253 V</Text>
+            <Text style={{ color: "#cbd5e1", fontSize: 12 }}>Frequency: 59–61 Hz</Text>
+            <Text style={{ color: "#cbd5e1", fontSize: 12 }}>Power factor: ≥ 0.80</Text>
+            <Text style={{ color: "#cbd5e1", fontSize: 12 }}>Current: ≤ 50 A</Text>
+          </View>
+          {standardAlerts.length ? (
+            <View style={{ backgroundColor: "#3f1515", borderRadius: 8, marginTop: 12, padding: 10 }}>
+              {standardAlerts.map((alert) => <Text key={alert} style={{ color: "#fecaca", fontSize: 12 }}>• {alert}</Text>)}
+            </View>
+          ) : null}
+        </View>
+
         <View style={styles.pzemGrid}>
-          {RELAY_CONFIG.map((config, index) => {
-            const reading = (!pzemError && pzemReadings.find((r) => r.outlet_id === index + 1)) || {
+          {(() => {
+            const reading = (!pzemError && pzemReadings[0]) || {
               voltage: 0,
               current: 0,
               power: 0,
@@ -458,16 +456,15 @@ useEffect(() => {
               pf: 0,
               energy: 0,
             };
-
-            const isOffline = pzemError || pzemReadings.length === 0;
+            const isOffline = pzemError || !pzemReadings[0];
 
             return (
-              <View key={config.id} style={styles.pzemCard}>
+              <View style={styles.mainBreakerCard}>
                 <View style={styles.pzemCardHeader}>
-                  <Ionicons name={config.icon} size={26} color="#ffffff" />
+                  <Ionicons name="flash-outline" size={26} color="#ffffff" />
                   <View>
-                    <Text style={styles.pzemOutletLabel}>Sensor Module 0{index + 1}</Text>
-                    <Text style={styles.pzemOutletName}>{config.label}</Text>
+                    <Text style={styles.pzemOutletLabel}>MAIN BREAKER</Text>
+                    <Text style={styles.pzemOutletName}>Whole-house supply</Text>
                   </View>
                   <View style={[styles.liveDot, isOffline && styles.liveDotOffline]} />
                 </View>
@@ -527,12 +524,11 @@ useEffect(() => {
                 </View>
               </View>
             );
-          })}
+          })()}
         </View>
 
       </View>
 
-      {/* ── Schedule Setup Modal ── */}
       <Modal visible={modalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalBox}>

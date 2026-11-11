@@ -125,6 +125,14 @@ const styles = StyleSheet.create({
     width: "100%",
     marginBottom: 20,
   },
+  mainBreakerCard: {
+    backgroundColor: "#16213e",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#22c55e66",
+    padding: 16,
+    width: "100%",
+  },
   pzemCard: { 
     backgroundColor: "#16213e", 
     borderRadius: 16, 

@@ -8,14 +8,6 @@ import CostAnalyticsCharts from "./CostAnalyticsCharts";
 
 const REFRESH_INTERVAL_MS = 60_000;
 type Period = "hourly" | "daily" | "monthly";
-const RELAYS = [
-  { id: 1, name: "Living Area" },
-  { id: 2, name: "Kitchen / Dining" },
-  { id: 3, name: "Master Bedroom" },
-  { id: 4, name: "Media Room" },
-  { id: 5, name: "Front Balcony" },
-];
-
 function formatKwh(value: string | number | undefined): string {
   const number = Number(value);
   return Number.isFinite(number) ? number.toFixed(3) : "0.000";
@@ -40,12 +32,23 @@ function formatRecordLabel(period: string, selectedPeriod: Period): string {
   return selectedPeriod === "daily" ? formatPeriod(period) : formatPeriod(period, true);
 }
 
+function dateKey(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
 export default function PzemHistory() {
   const [history, setHistory] = useState<PzemHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [period, setPeriod] = useState<Period>("hourly");
   const [ratePerKwh, setRatePerKwh] = useState(0);
+  const today = new Date();
+  const [calendarMonth, setCalendarMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [selectedDate, setSelectedDate] = useState(dateKey(today));
+  const [selectedDayUsage, setSelectedDayUsage] = useState(0);
+  const [selectedDayLoading, setSelectedDayLoading] = useState(false);
 
   const loadHistory = useCallback(async () => {
     try {
@@ -56,6 +59,7 @@ export default function PzemHistory() {
       ]);
       if (historyResult.status === "rejected") throw historyResult.reason;
       setHistory(historyResult.value);
+      setSelectedDayUsage(Number(historyResult.value.selectedDay?.total_kwh) || 0);
       if (budgetResult.status === "fulfilled") {
         setRatePerKwh(Number(budgetResult.value.ratePerKwh) || 0);
       }
@@ -66,6 +70,37 @@ export default function PzemHistory() {
       setLoading(false);
     }
   }, []);
+
+  const loadSelectedDay = useCallback(async (date: string) => {
+    setSelectedDayLoading(true);
+    try {
+      const result = await fetchPzemHistory(date);
+      setSelectedDayUsage(Number(result.selectedDay?.total_kwh) || 0);
+    } catch (error) {
+      console.error("Selected day history error:", error);
+    } finally {
+      setSelectedDayLoading(false);
+    }
+  }, []);
+
+  const selectDate = (date: Date) => {
+    const key = dateKey(date);
+    setSelectedDate(key);
+    loadSelectedDay(key);
+  };
+
+  const goToMonth = (year: number, month: number) => {
+    const firstOfMonth = new Date(year, month, 1);
+    setCalendarMonth(firstOfMonth);
+    selectDate(firstOfMonth);
+  };
+
+  const firstDay = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1).getDay();
+  const daysInMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
+  const calendarCells = Array.from({ length: firstDay + daysInMonth }, (_, index) =>
+    index < firstDay ? null : new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), index - firstDay + 1),
+  );
+  const isFutureDate = selectedDate > dateKey(today);
 
   useEffect(() => {
     loadHistory();
@@ -141,9 +176,71 @@ export default function PzemHistory() {
               <Text style={styles.monthSummaryLabel}>{formatKwh(monthlyTotal)} kWh recorded</Text>
               {monthChange !== null ? <Text style={styles.monthSummaryTrend}>{ratePerKwh > 0 ? "Cost" : "Usage"} {monthChange === 0 ? "unchanged" : `${monthChange > 0 ? "up" : "down"} ${Math.abs(monthChange).toFixed(1)}%`} vs previous month</Text> : null}
             </View>
+
             <View style={{ alignItems: "flex-end" }}>
               <Text style={styles.monthSummaryLabel}>Electricity rate</Text>
               <Text style={styles.monthSummaryTrend}>{ratePerKwh > 0 ? `${formatPeso(ratePerKwh)} / kWh` : "Set rate on Dashboard"}</Text>
+            </View>
+          </View>
+
+          <View style={styles.calendarCard}>
+            <View style={styles.calendarHeader}>
+              <Text style={styles.calendarSectionTitle}>Daily consumption</Text>
+              <Text style={styles.calendarHint}>Choose a year, month, then day</Text>
+            </View>
+            <View style={styles.yearSelector}>
+              {Array.from({ length: 7 }, (_, index) => calendarMonth.getFullYear() - 3 + index).map((year) => (
+                <TouchableOpacity
+                  key={year}
+                  onPress={() => goToMonth(year, calendarMonth.getMonth())}
+                  style={[styles.yearButton, calendarMonth.getFullYear() === year && styles.yearButtonActive]}
+                >
+                  <Text style={[styles.yearText, calendarMonth.getFullYear() === year && styles.yearTextActive]}>{year}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.monthSelector}>
+              {Array.from({ length: 12 }, (_, month) => (
+                <TouchableOpacity
+                  key={month}
+                  onPress={() => goToMonth(calendarMonth.getFullYear(), month)}
+                  style={[styles.monthButton, calendarMonth.getMonth() === month && styles.monthButtonActive]}
+                >
+                  <Text style={[styles.monthText, calendarMonth.getMonth() === month && styles.monthTextActive]}>
+                    {new Date(2000, month, 1).toLocaleDateString(undefined, { month: "short" })}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.calendarHeader}>
+              <TouchableOpacity onPress={() => goToMonth(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1)}>
+                <Text style={styles.calendarArrow}>‹</Text>
+              </TouchableOpacity>
+              <Text style={styles.calendarTitle}>{calendarMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" })}</Text>
+              <TouchableOpacity onPress={() => goToMonth(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1)}>
+                <Text style={styles.calendarArrow}>›</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.calendarWeek}>
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                <Text key={day} style={styles.calendarWeekday}>{day}</Text>
+              ))}
+            </View>
+            <View style={styles.calendarGrid}>
+              {calendarCells.map((date, index) => date ? (
+                <TouchableOpacity key={dateKey(date)} onPress={() => selectDate(date)} style={[styles.calendarDay, selectedDate === dateKey(date) && styles.calendarDaySelected]}>
+                  <Text style={[styles.calendarDayText, selectedDate === dateKey(date) && styles.calendarDayTextSelected]}>{date.getDate()}</Text>
+                </TouchableOpacity>
+              ) : <View key={`empty-${index}`} style={styles.calendarDay} />)}
+            </View>
+            <View style={styles.selectedDaySummary}>
+              <Text style={styles.selectedDayLabel}>WHOLE-HOUSE CONSUMPTION — {selectedDate}</Text>
+              <Text style={styles.selectedDayValue}>
+                {selectedDayLoading ? "Loading..." : isFutureDate ? "No recorded data yet" : `${formatKwh(selectedDayUsage)} kWh`}
+              </Text>
+              <Text style={styles.selectedDayCost}>
+                {isFutureDate ? "This date is in the future" : ratePerKwh > 0 ? formatPeso(selectedDayUsage * ratePerKwh) : "Set your rate to estimate cost"}
+              </Text>
             </View>
           </View>
 
@@ -179,24 +276,6 @@ export default function PzemHistory() {
             ratePerKwh={ratePerKwh}
             formatValue={(value) => ratePerKwh > 0 ? formatPeso(value) : `${formatKwh(value)} kWh`}
           />
-
-          <View style={styles.relayBreakdown}>
-            <Text style={styles.sectionTitle}>Usage by relay</Text>
-            <Text style={styles.sectionSubtitle}>Energy use and estimated cost for {periodLabels[period].toLowerCase()}.</Text>
-            {RELAYS.map((relay) => {
-              const usage = Number(history?.relayTotals?.[period]?.find((item) => Number(item.outlet_id) === relay.id)?.total_kwh) || 0;
-              return <View key={relay.id} style={styles.relayRow}>
-                <View style={styles.relayLabelGroup}>
-                  <Text style={styles.relayNumber}>Relay {relay.id}</Text>
-                  <Text style={styles.relayLocation}>{relay.name}</Text>
-                </View>
-                <View style={styles.relayValueGroup}>
-                  <Text style={styles.relayCost}>{ratePerKwh > 0 ? formatPeso(usage * ratePerKwh) : "Set rate"}</Text>
-                  <Text style={styles.relayUsage}>{formatKwh(usage)} kWh</Text>
-                </View>
-              </View>;
-            })}
-          </View>
 
           {records.length ? (
             <View style={styles.historyList}>

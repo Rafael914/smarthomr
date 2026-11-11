@@ -3,41 +3,19 @@
 #include <HTTPClient.h>
 #include <PZEM004Tv30.h>
 
-// ==========================================
-// WIFI CONFIGURATION
-// ==========================================
-
 const char* ssid = "RAFAEL6877";
 const char* password = "123456789";
-
-// ==========================================
-// BACKEND API CONFIGURATION
-// ==========================================
 
 const char* relayURL = "http://10.118.174.173:5000/api/relay";
 const char* pzemURL = "http://10.118.174.173:5000/api/pzem";
 
 WiFiClient wifiClient;
 
-// ==========================================
-// PZEM CONFIGURATION
-// ==========================================
-
-// Both PZEM modules share one UART bus. Their different addresses
-// allow the library to query them one at a time.
+// The main-breaker PZEM uses Modbus address 0x01.
 constexpr int PZEM1_RX_PIN = 16;
 constexpr int PZEM1_TX_PIN = 17;
 HardwareSerial pzemSerial1(2);
 PZEM004Tv30 pzem1(pzemSerial1, PZEM1_RX_PIN, PZEM1_TX_PIN, 0x01);
-
-// PZEM #2 uses address 0x03 on the same RX/TX wires as PZEM #1.
-PZEM004Tv30 pzem2(pzemSerial1, PZEM1_RX_PIN, PZEM1_TX_PIN, 0x03);
-
-constexpr size_t PZEM_COUNT = 2;
-
-// ==========================================
-// SIM800A CONFIGURATION
-// ==========================================
 
 HardwareSerial sim800Serial(1);
 
@@ -45,19 +23,11 @@ constexpr int SIM800_RX_PIN = 4;
 constexpr int SIM800_TX_PIN = 5;
 constexpr uint32_t SIM800_BAUD = 9600;
 
-// ==========================================
-// RELAY GPIO CONFIGURATION
-// ==========================================
-
 #define relay1 25
 #define relay2 26
 #define relay3 27
-#define relay4 18  // Moved from 32 since GPIO 32 is now PZEM2 TX
-#define relay5 33  // GPIO 33 is free
-
-// ==========================================
-// RELAY STATES
-// ==========================================
+#define relay4 18
+#define relay5 33
 
 bool relayState1 = false;
 bool relayState2 = false;
@@ -68,24 +38,12 @@ bool relayState5 = false;
 bool openAll = false;
 bool closeAll = false;
 
-// ==========================================
-// SMS VARIABLES
-// ==========================================
-
 String sim800Line;
 bool waitingForSmsBody = false;
-
-// ==========================================
-// WIFI MONITORING VARIABLES
-// ==========================================
 
 bool wasConnected = false;
 unsigned long lastWiFiAttempt = 0;
 const unsigned long WIFI_RECONNECT_INTERVAL = 5000;
-
-// ==========================================
-// SET ALL RELAYS
-// ==========================================
 
 void setAllRelays(bool enabled) {
   relayState1 = enabled;
@@ -97,10 +55,6 @@ void setAllRelays(bool enabled) {
   openAll = false;
   closeAll = false;
 }
-
-// ==========================================
-// SET INDIVIDUAL RELAY
-// ==========================================
 
 void setRelayState(uint8_t relayNumber, bool enabled) {
   switch (relayNumber) {
@@ -114,10 +68,6 @@ void setRelayState(uint8_t relayNumber, bool enabled) {
   openAll = false;
   closeAll = false;
 }
-
-// ==========================================
-// APPLY RELAY STATES
-// ==========================================
 
 void updateRelays() {
   if (openAll) {
@@ -140,10 +90,6 @@ void updateRelays() {
     digitalWrite(relay5, relayState5 ? LOW : HIGH);
   }
 }
-
-// ==========================================
-// HANDLE SMS COMMANDS
-// ==========================================
 
 void handleSmsCommand(String command) {
   command.trim();
@@ -188,10 +134,6 @@ void handleSmsCommand(String command) {
   updateRelays();
 }
 
-// ==========================================
-// PROCESS SIM800A SMS RESPONSE
-// ==========================================
-
 void processSim800Line(String line) {
   line.trim();
   if (line.startsWith("+CMT:")) {
@@ -210,10 +152,6 @@ void processSim800Line(String line) {
   }
 }
 
-// ==========================================
-// READ SIM800A MESSAGES
-// ==========================================
-
 void processSim800Messages() {
   while (sim800Serial.available()) {
     char character = static_cast<char>(sim800Serial.read());
@@ -225,10 +163,6 @@ void processSim800Messages() {
     }
   }
 }
-
-// ==========================================
-// WIFI CONNECTION
-// ==========================================
 
 void connectWiFi() {
   Serial.println();
@@ -270,10 +204,6 @@ void connectWiFi() {
   Serial.println();
 }
 
-// ==========================================
-// WIFI CONNECTION MONITOR
-// ==========================================
-
 void monitorWiFi() {
   if (WiFi.status() == WL_CONNECTED) {
     if (!wasConnected) {
@@ -294,22 +224,17 @@ void monitorWiFi() {
   }
 }
 
-// ==========================================
-// SEND PZEM READINGS TO BACKEND
-// ==========================================
-
 void postPzemReadings() {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("[API] WiFi disconnected. PZEM upload skipped.");
     return;
   }
 
-  float v1 = pzem1.voltage(), c1 = pzem1.current(), p1 = pzem1.power(), e1 = pzem1.energy(), f1 = pzem1.frequency(), pf1 = pzem1.pf();
-  float v2 = pzem2.voltage(), c2 = pzem2.current(), p2 = pzem2.power(), e2 = pzem2.energy(), f2 = pzem2.frequency(), pf2 = pzem2.pf();
+  float v1 = pzem1.voltage(), c1 = pzem1.current(), p1 = pzem1.power();
+  float e1 = pzem1.energy(), f1 = pzem1.frequency(), pf1 = pzem1.pf();
 
   String body = "[";
 
-  // Outlet 1 (PZEM #1 - Addr 0x01 on GPIO 16/17)
   body += "{\"outlet_id\":1";
   body += ",\"voltage\":" + String(isnan(v1) ? 0 : v1, 2);
   body += ",\"current\":" + String(isnan(c1) ? 0 : c1, 3);
@@ -317,16 +242,6 @@ void postPzemReadings() {
   body += ",\"energy\":" + String(isnan(e1) ? 0 : e1, 3);
   body += ",\"frequency\":" + String(isnan(f1) ? 0 : f1, 1);
   body += ",\"pf\":" + String(isnan(pf1) ? 0 : pf1, 2);
-  body += "},";
-
-  // Outlet 2 (PZEM #2 - Addr 0x03 on the shared GPIO 16/17 bus)
-  body += "{\"outlet_id\":2";
-  body += ",\"voltage\":" + String(isnan(v2) ? 0 : v2, 2);
-  body += ",\"current\":" + String(isnan(c2) ? 0 : c2, 3);
-  body += ",\"power\":" + String(isnan(p2) ? 0 : p2, 2);
-  body += ",\"energy\":" + String(isnan(e2) ? 0 : e2, 3);
-  body += ",\"frequency\":" + String(isnan(f2) ? 0 : f2, 1);
-  body += ",\"pf\":" + String(isnan(pf2) ? 0 : pf2, 2);
   body += "}]";
 
   HTTPClient http;
@@ -348,10 +263,6 @@ void postPzemReadings() {
 
   http.end();
 }
-
-// ==========================================
-// GET RELAY COMMANDS FROM BACKEND
-// ==========================================
 
 void getRelayCommands() {
   if (WiFi.status() != WL_CONNECTED) return;
@@ -375,10 +286,6 @@ void getRelayCommands() {
   http.end();
 }
 
-// ==========================================
-// SETUP
-// ==========================================
-
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -388,8 +295,6 @@ void setup() {
   Serial.println("       POWER CONTROL SYSTEM");
   Serial.println("================================");
 
-  // Both PZEM modules share UART2. Connect both RX pins to GPIO 16
-  // and both TX pins to GPIO 17, with addresses 0x01 and 0x03.
   pzemSerial1.begin(
     9600,
     SERIAL_8N1,
@@ -397,17 +302,14 @@ void setup() {
     PZEM1_TX_PIN
   );
 
-  // SIM800A SERIAL (UART1 on GPIO 4 & 5)
   sim800Serial.begin(SIM800_BAUD, SERIAL_8N1, SIM800_RX_PIN, SIM800_TX_PIN);
 
-  // RELAY PINS
   pinMode(relay1, OUTPUT);
   pinMode(relay2, OUTPUT);
   pinMode(relay3, OUTPUT);
   pinMode(relay4, OUTPUT);
   pinMode(relay5, OUTPUT);
 
-  // DEFAULT RELAY STATES: ALL OFF
   digitalWrite(relay1, LOW);
   digitalWrite(relay2, HIGH);
   digitalWrite(relay3, HIGH);
@@ -416,7 +318,6 @@ void setup() {
 
   connectWiFi();
 
-  // SIM800A INITIALIZATION
   delay(1000);
   sim800Serial.println("AT");
   delay(500);
@@ -427,10 +328,6 @@ void setup() {
 
   Serial.println("[SYSTEM] Setup Complete.");
 }
-
-// ==========================================
-// MAIN LOOP
-// ==========================================
 
 void loop() {
   processSim800Messages();

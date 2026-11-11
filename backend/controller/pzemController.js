@@ -115,7 +115,10 @@ const getLiveReadings = () => [
 
 export const getPzemHistory = async (req, res) => {
   try {
-    const [hourly, daily, monthly, relayHourly, relayDaily, relayMonthly] = await Promise.all([
+    const requestedDate = typeof req.query.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)
+      ? req.query.date
+      : null;
+    const [hourly, daily, monthly, relayHourly, relayDaily, relayMonthly, selectedDay] = await Promise.all([
       sql`
         SELECT
           date_trunc('hour', recorded_at) AS period,
@@ -164,6 +167,19 @@ export const getPzemHistory = async (req, res) => {
         GROUP BY outlet_id
         ORDER BY outlet_id
       `,
+      requestedDate
+        ? sql`
+            SELECT ${requestedDate}::date AS period, COALESCE(SUM(hourly_used_kwh), 0) AS total_kwh
+            FROM readings
+            WHERE recorded_at >= ${requestedDate}::date
+              AND recorded_at < ${requestedDate}::date + INTERVAL '1 day'
+          `
+        : sql`
+            SELECT CURRENT_DATE AS period, COALESCE(SUM(hourly_used_kwh), 0) AS total_kwh
+            FROM readings
+            WHERE recorded_at >= CURRENT_DATE
+              AND recorded_at < CURRENT_DATE + INTERVAL '1 day'
+          `,
     ]);
 
     return res.json({
@@ -171,6 +187,7 @@ export const getPzemHistory = async (req, res) => {
       daily,
       monthly,
       relayTotals: { hourly: relayHourly, daily: relayDaily, monthly: relayMonthly },
+      selectedDay: selectedDay[0] || null,
     });
   } catch (error) {
     console.error("PZEM history error:", error);
