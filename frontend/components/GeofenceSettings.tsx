@@ -15,6 +15,7 @@ import { useGeofence } from "../hooks/useGeofence";
 import { Storage } from "../utils/storage";
 import axios from "axios";
 import { BASE_URL } from "../utils/api";
+import { Ionicons } from "@expo/vector-icons";
 
 interface GeofenceSettings {
   geofence_enabled: boolean;
@@ -162,27 +163,27 @@ export const GeofenceSettings: React.FC = () => {
       const token = await Storage.getItem("token");
 
       if (!userId) {
-        Alert.alert("❌ Error", "User ID not found. Please log in again.");
+        Alert.alert("Error", "User ID not found. Please log in again.");
         return;
       }
       if (!token) {
-        Alert.alert("❌ Error", "Auth token not found. Please log in again.");
+        Alert.alert("Error", "Auth token not found. Please log in again.");
         return;
       }
 
       const success = await setHomeLocation();
       if (success) {
-        Alert.alert("✅ Success", "Home location saved!");
+        Alert.alert("Success", "Home location saved!");
         await loadGeofenceSettings();
       } else {
         Alert.alert(
-          "❌ Error",
+          "Error",
           "Failed to set home location. Check backend connectivity."
         );
       }
     } catch (error) {
       console.error("Detailed error:", error);
-      Alert.alert("❌ Error", `Failed to set home location: ${error}`);
+      Alert.alert("Error", `Failed to set home location: ${error}`);
     } finally {
       setLoadingHome(false);
     }
@@ -193,7 +194,7 @@ export const GeofenceSettings: React.FC = () => {
   const handleToggleGeofence = async (value: boolean) => {
     if (value && (!settings.home_latitude || !settings.home_longitude)) {
       Alert.alert(
-        "⚠️ Home Location Not Set",
+        "Home Location Not Set",
         "Please set your home location first before enabling geofence.",
         [{ text: "OK" }]
       );
@@ -236,7 +237,7 @@ export const GeofenceSettings: React.FC = () => {
 
       setSettings((prev) => ({ ...prev, radius_meters: newRadius }));
       setCustomRadius(String(newRadius));
-      Alert.alert("✅ Success", `Geofence radius updated to ${newRadius}m`);
+      Alert.alert("Success", `Geofence radius updated to ${newRadius}m`);
     } catch {
       Alert.alert("Error", "Failed to update radius");
     }
@@ -268,7 +269,10 @@ export const GeofenceSettings: React.FC = () => {
       contentContainerStyle={styles.contentContainer}
     >
       <View style={styles.card}>
-        <Text style={styles.title}>🏠 Geofence Settings</Text>
+        <View style={styles.titleRow}>
+          <Ionicons name="shield-checkmark-outline" size={26} color="#00d4ff" />
+          <Text style={styles.title}>Geofence Settings</Text>
+        </View>
 
         {/* ── Geofence Toggle ── */}
         <View style={styles.section}>
@@ -287,8 +291,8 @@ export const GeofenceSettings: React.FC = () => {
           </View>
           <Text style={styles.description}>
             {settings.geofence_enabled
-              ? `✅ Geofence is active. All relays will turn off when you're ${settings.radius_meters}m away.`
-              : "⏸️ Geofence is inactive. Enable to auto-disable relays when away."}
+              ? `ACTIVE - All relays will turn off when you're ${settings.radius_meters}m away.`
+              : "INACTIVE - Enable to auto-disable relays when away."}
           </Text>
         </View>
 
@@ -298,12 +302,12 @@ export const GeofenceSettings: React.FC = () => {
           <View style={styles.locationBox}>
             {settings.home_latitude && settings.home_longitude ? (
               <Text style={styles.locationText}>
-                ✅ Home set at:{" "}
+                SET -{" "}
                 {Number(settings.home_latitude).toFixed(6)},{" "}
                 {Number(settings.home_longitude).toFixed(6)}
               </Text>
             ) : (
-              <Text style={styles.locationText}>❌ Home location not set</Text>
+              <Text style={styles.locationText}>NOT SET - Home location required</Text>
             )}
           </View>
           <TouchableOpacity
@@ -314,7 +318,7 @@ export const GeofenceSettings: React.FC = () => {
             {loadingHome ? (
               <ActivityIndicator color="#0a0a0f" />
             ) : (
-              <Text style={styles.buttonText}>📍 Set Home Location</Text>
+              <Text style={styles.buttonText}>Set Home Location</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -324,7 +328,7 @@ export const GeofenceSettings: React.FC = () => {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Current Location</Text>
             {settings.home_latitude && settings.home_longitude && (
-              <Text style={styles.autoUpdateBadge}>🔄 Auto-updating</Text>
+              <Text style={styles.autoUpdateBadge}>AUTO-UPDATING</Text>
             )}
           </View>
 
@@ -336,17 +340,17 @@ export const GeofenceSettings: React.FC = () => {
             {loadingLocation ? (
               <ActivityIndicator color="#0a0a0f" />
             ) : (
-              <Text style={styles.buttonText}>🔍 Get Current Location</Text>
+              <Text style={styles.buttonText}>Get Current Location</Text>
             )}
           </TouchableOpacity>
 
           {currentLocation && (
             <View style={styles.locationBox}>
               <Text style={styles.locationText}>
-                📍 Latitude: {currentLocation.latitude.toFixed(6)}
+                Latitude: {currentLocation.latitude.toFixed(6)}
               </Text>
               <Text style={styles.locationText}>
-                📍 Longitude: {currentLocation.longitude.toFixed(6)}
+                Longitude: {currentLocation.longitude.toFixed(6)}
               </Text>
               <Text style={styles.locationText}>
                 📡 Accuracy: ±
@@ -367,11 +371,11 @@ export const GeofenceSettings: React.FC = () => {
               </Text>
               {isOutside ? (
                 <Text style={styles.distanceWarning}>
-                  ⚠️ You are outside geofence! Relays should be OFF.
+                  OUTSIDE GEOFENCE - Relays should be OFF.
                 </Text>
               ) : (
                 <Text style={styles.distanceSafe}>
-                  ✅ You are within geofence zone.
+                  WITHIN GEOFENCE ZONE.
                 </Text>
               )}
             </View>
@@ -438,7 +442,7 @@ export const GeofenceSettings: React.FC = () => {
         {/* ── Info ── */}
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
-            💡 When geofence is enabled and you move{" "}
+            When geofence is enabled and you move{" "}
             {settings.radius_meters}+ meters away from your home location, all
             relays will automatically turn OFF for safety. Location refreshes
             every {POLL_INTERVAL_MS / 1000}s automatically.

@@ -18,6 +18,7 @@ import axios from "axios";
 import { Storage } from "../../utils/storage";
 import { router } from "expo-router";
 import { BASE_URL } from "../../utils/api";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -124,7 +125,10 @@ export default function Login() {
 
             {/* LOGO */}
             <View style={styles.logoContainer}>
-              <Text style={styles.logo}>⚡</Text>
+              <View style={styles.logoMark}>
+                <Ionicons name="shield-checkmark-outline" size={54} color="#00d4ff" />
+                <Ionicons name="home-outline" size={24} color="#ffffff" style={styles.logoHome} />
+              </View>
             </View>
 
             {/* TITLE */}
@@ -164,14 +168,18 @@ export default function Login() {
                 onSubmitEditing={login}
               />
               <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                <Text style={styles.eye}>{showPassword ? "🙈" : "👁️"}</Text>
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={22}
+                  color="#9ca3af"
+                />
               </TouchableOpacity>
             </View>
 
             {/* ERROR MESSAGE DYNAMICALLY DISPLAYED ON UI */}
             {errorMessage && (
               <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>⚠️ {errorMessage}</Text>
+                <Text style={styles.errorText}>{errorMessage}</Text>
               </View>
             )}
 
@@ -231,8 +239,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
-  logo: {
-    fontSize: 55,
+  logoMark: {
+    width: 76,
+    height: 76,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 22,
+    backgroundColor: "#0b2633",
+    borderWidth: 1,
+    borderColor: "#00d4ff55",
+  },
+  logoHome: {
+    position: "absolute",
   },
   title: {
     color: "#fff",

@@ -219,7 +219,7 @@ function BluePrint() {
                       onPress={() => toggleRelay("relay1", relay1, setRelay1)}
                       activeOpacity={0.9}
                     >
-                      <Text style={styles.emojiIcon}>{relay1 ? "🟢" : "⚪"}</Text>
+                      <Ionicons name={relay1 ? "checkmark-circle" : "ellipse-outline"} size={24} color={relay1 ? "#00ffaa" : "#5c8090"} />
                     </TouchableOpacity>
                     <Text style={[styles.relayTag, relay1 && styles.relayTagActive]}>[CH_01_RLY]</Text>
                   </View>
@@ -233,7 +233,7 @@ function BluePrint() {
                       onPress={() => toggleRelay("relay2", relay2, setRelay2)}
                       activeOpacity={0.9}
                     >
-                      <Text style={styles.emojiIcon}>{relay2 ? "🟢" : "⚪"}</Text>
+                      <Ionicons name={relay2 ? "checkmark-circle" : "ellipse-outline"} size={24} color={relay2 ? "#00ffaa" : "#5c8090"} />
                     </TouchableOpacity>
                     <Text style={[styles.relayTag, relay2 && styles.relayTagActive]}>[CH_02_RLY]</Text>
                   </View>
@@ -260,7 +260,7 @@ function BluePrint() {
                       onPress={() => toggleRelay("relay3", relay3, setRelay3)}
                       activeOpacity={0.9}
                     >
-                      <Text style={styles.emojiIcon}>{relay3 ? "🟢" : "⚪"}</Text>
+                      <Ionicons name={relay3 ? "checkmark-circle" : "ellipse-outline"} size={24} color={relay3 ? "#00ffaa" : "#5c8090"} />
                     </TouchableOpacity>
                     <Text style={[styles.relayTag, relay3 && styles.relayTagActive]}>[CH_03_RLY]</Text>
                   </View>
@@ -274,7 +274,7 @@ function BluePrint() {
                       onPress={() => toggleRelay("relay4", relay4, setRelay4)}
                       activeOpacity={0.9}
                     >
-                      <Text style={styles.emojiIcon}>{relay4 ? "🟢" : "⚪"}</Text>
+                      <Ionicons name={relay4 ? "checkmark-circle" : "ellipse-outline"} size={24} color={relay4 ? "#00ffaa" : "#5c8090"} />
                     </TouchableOpacity>
                     <Text style={[styles.relayTag, relay4 && styles.relayTagActive]}>[CH_04_RLY]</Text>
                   </View>
@@ -291,7 +291,7 @@ function BluePrint() {
                     onPress={() => toggleRelay("relay5", relay5, setRelay5)}
                     activeOpacity={0.9}
                   >
-                    <Text style={styles.emojiIcon}>{relay5 ? "🟢" : "⚪"}</Text>
+                    <Ionicons name={relay5 ? "checkmark-circle" : "ellipse-outline"} size={24} color={relay5 ? "#00ffaa" : "#5c8090"} />
                   </TouchableOpacity>
                   <Text style={[styles.relayTag, relay5 && styles.relayTagActive]}>[CH_05_RLY]</Text>
                 </View>

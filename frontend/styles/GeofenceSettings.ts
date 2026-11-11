@@ -30,6 +30,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: "center",
   },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
   section: {
     marginBottom: 20,
     paddingBottom: 20,

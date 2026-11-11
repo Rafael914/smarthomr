@@ -16,15 +16,16 @@ import { Storage } from "../utils/storage";
 import {fetchRelay} from "../axiosFolder/relay";
 import {fetchPzem} from "../axiosFolder/pzem";
 import { fetchEnergyBudget, saveEnergyBudget } from "../axiosFolder/energyBudget";
+import { Ionicons } from "@expo/vector-icons";
 
 
 // Expanded CONFIG to 5 channels
 const RELAY_CONFIG = [
-  { id: "relay1", label: "Living Area", icon: "🔌" },
-  { id: "relay2", label: "Kitchen", icon: "⚡" },
-  { id: "relay3", label: "Bedroom", icon: "💡" },
-  { id: "relay4", label: "MEDIA ROOM", icon: "🖥️" },
-  { id: "relay5", label: "Front Balcony", icon: "🌀" },
+  { id: "relay1", label: "Living Area", icon: "home-outline" },
+  { id: "relay2", label: "Kitchen", icon: "restaurant-outline" },
+  { id: "relay3", label: "Bedroom", icon: "bed-outline" },
+  { id: "relay4", label: "MEDIA ROOM", icon: "tv-outline" },
+  { id: "relay5", label: "Front Balcony", icon: "sunny-outline" },
 ];
 
 type Schedule = {
@@ -307,7 +308,7 @@ useEffect(() => {
             return (
               <View key={relay.id} style={[styles.card, isOn && styles.cardActive]}>
                 <View style={styles.cardTop}>
-                  <Text style={styles.relayIcon}>{relay.icon}</Text>
+                  <Ionicons name={relay.icon} size={26} color={isOn ? "#22c55e" : "#ffffff"} />
                   <View style={[styles.dot, isOn ? styles.dotOn : styles.dotOff]} />
                 </View>
 
@@ -318,12 +319,12 @@ useEffect(() => {
                   <View style={styles.schedBadgeRow}>
                     {sched.onTime ? (
                       <View style={styles.schedBadge}>
-                        <Text style={styles.schedBadgeText}>🟢 ON {sched.onTime}</Text>
+                        <Text style={styles.schedBadgeText}>ON {sched.onTime}</Text>
                       </View>
                     ) : null}
                     {sched.offTime ? (
                       <View style={[styles.schedBadge, styles.schedBadgeOff]}>
-                        <Text style={styles.schedBadgeText}>🔴 OFF {sched.offTime}</Text>
+                        <Text style={styles.schedBadgeText}>OFF {sched.offTime}</Text>
                       </View>
                     ) : null}
                   </View>
@@ -366,7 +367,7 @@ useEffect(() => {
 
         {/*  Section Title: Energy Monitoring  */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>⚡ Power Telemetry</Text>
+          <Text style={styles.sectionTitle}>Power Telemetry</Text>
           <Text style={styles.sectionSub}>Live metrics from individual PZEM modules</Text>
         </View>
 
@@ -463,7 +464,7 @@ useEffect(() => {
             return (
               <View key={config.id} style={styles.pzemCard}>
                 <View style={styles.pzemCardHeader}>
-                  <Text style={styles.pzemOutletIcon}>{config.icon}</Text>
+                  <Ionicons name={config.icon} size={26} color="#ffffff" />
                   <View>
                     <Text style={styles.pzemOutletLabel}>Sensor Module 0{index + 1}</Text>
                     <Text style={styles.pzemOutletName}>{config.label}</Text>
