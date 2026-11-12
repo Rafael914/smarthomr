@@ -1,8 +1,27 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { createHash, randomBytes } from "node:crypto";
 import { sql } from "../config/db.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
+const ACCESS_TOKEN_TTL = "15m";
+const REFRESH_TOKEN_TTL_DAYS = 30;
+const hashRefreshToken = (token) => createHash("sha256").update(token).digest("hex");
+
+const createAccessToken = (user) => jwt.sign(
+  { id: user.id, name: user.username, email: user.email },
+  JWT_SECRET,
+  { expiresIn: ACCESS_TOKEN_TTL }
+);
+
+const issueRefreshToken = async (userId) => {
+  const refreshToken = randomBytes(48).toString("base64url");
+  await sql`
+    INSERT INTO refresh_tokens (token_hash, user_id, expires_at)
+    VALUES (${hashRefreshToken(refreshToken)}, ${userId}, NOW() + (${REFRESH_TOKEN_TTL_DAYS} * INTERVAL '1 day'))
+  `;
+  return refreshToken;
+};
 
 export const initUsersTable = async () => {
   await sql`
@@ -16,6 +35,14 @@ export const initUsersTable = async () => {
     )
   `;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user'`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS refresh_tokens (
+      token_hash TEXT PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
 
   // Bootstrap the requested administrator once. Override these values in backend/.env for deployment.
   const adminName = process.env.ADMIN_NAME || "Rafael";
@@ -105,12 +132,54 @@ export const login = async (req, res) => {
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
-    const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "7d" });
-    return res.json({ success: true, token, user: publicUser(user) });
+    const token = createAccessToken(user);
+    const refreshToken = await issueRefreshToken(user.id);
+    return res.json({ success: true, token, refreshToken, expiresIn: 900, user: publicUser(user) });
   } catch (error) {
     console.error("LOGIN ERROR:", error);
     return res.status(500).json({ success: false, message: "Server error during login" });
   }
+};
+
+export const refresh = async (req, res) => {
+  const { refreshToken } = req.body;
+  if (typeof refreshToken !== "string" || !refreshToken) {
+    return res.status(400).json({ success: false, message: "Refresh token required" });
+  }
+
+  try {
+    const tokenHash = hashRefreshToken(refreshToken);
+    const rows = await sql`
+      DELETE FROM refresh_tokens
+      WHERE token_hash = ${tokenHash} AND expires_at > NOW()
+      RETURNING user_id
+    `;
+    if (!rows[0]) return res.status(401).json({ success: false, message: "Invalid or expired refresh token" });
+
+    const users = await sql`SELECT id, username, email, role FROM users WHERE id = ${rows[0].user_id}`;
+    if (!users[0]) return res.status(401).json({ success: false, message: "Account no longer exists" });
+
+    const user = users[0];
+    const token = createAccessToken(user);
+    const nextRefreshToken = await issueRefreshToken(user.id);
+    return res.json({ success: true, token, refreshToken: nextRefreshToken, expiresIn: 900, user: publicUser(user) });
+  } catch (error) {
+    console.error("TOKEN REFRESH ERROR:", error);
+    return res.status(500).json({ success: false, message: "Could not refresh session" });
+  }
+};
+
+export const logout = async (req, res) => {
+  const { refreshToken } = req.body;
+  if (typeof refreshToken === "string" && refreshToken) {
+    try {
+      await sql`DELETE FROM refresh_tokens WHERE token_hash = ${hashRefreshToken(refreshToken)}`;
+    } catch (error) {
+      console.error("LOGOUT ERROR:", error);
+      return res.status(500).json({ success: false, message: "Could not end session" });
+    }
+  }
+  return res.json({ success: true });
 };
 
 export const listUsers = async (_req, res) => {

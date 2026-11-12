@@ -85,6 +85,7 @@ export default function Login() {
       }
 
       await Storage.setItem("token", token);
+      if (res.data.refreshToken) await Storage.setItem("refreshToken", res.data.refreshToken);
       await Storage.setItem("userId", userId.toString());
       await Storage.setItem("role", res.data.user?.role || "user");
 

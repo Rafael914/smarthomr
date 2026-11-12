@@ -118,7 +118,20 @@ export const getPzemHistory = async (req, res) => {
     const requestedDate = typeof req.query.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date)
       ? req.query.date
       : null;
-    const [hourly, daily, monthly, relayHourly, relayDaily, relayMonthly, selectedDay] = await Promise.all([
+    const requestedYear = Number(req.query.year);
+    const requestedMonth = Number(req.query.month);
+    const hasCalendarSelection = Number.isInteger(requestedYear) && requestedYear >= 2000 && requestedYear <= 2100
+      && Number.isInteger(requestedMonth) && requestedMonth >= 1 && requestedMonth <= 12;
+    const calendarYear = hasCalendarSelection ? requestedYear : new Date().getUTCFullYear();
+    const calendarMonth = hasCalendarSelection ? requestedMonth : new Date().getUTCMonth() + 1;
+    const selectedDate = requestedDate || `${calendarYear}-${String(calendarMonth).padStart(2, "0")}-01`;
+    const monthStart = new Date(Date.UTC(calendarYear, calendarMonth - 1, 1) - 8 * 60 * 60 * 1000);
+    const nextMonthStart = new Date(Date.UTC(calendarYear, calendarMonth, 1) - 8 * 60 * 60 * 1000);
+    const yearStart = new Date(Date.UTC(calendarYear, 0, 1) - 8 * 60 * 60 * 1000);
+    const nextYearStart = new Date(Date.UTC(calendarYear + 1, 0, 1) - 8 * 60 * 60 * 1000);
+    const selectedDayStart = new Date(`${selectedDate}T00:00:00+08:00`);
+    const nextSelectedDayStart = new Date(selectedDayStart.getTime() + 24 * 60 * 60 * 1000);
+    const [hourly, daily, monthly, relayHourly, relayDaily, relayMonthly, selectedDay, calendarHourly, calendarDaily, calendarMonthTotal, calendarYearTotal, calendarMonthly] = await Promise.all([
       sql`
         SELECT
           date_trunc('hour', recorded_at) AS period,
@@ -167,19 +180,49 @@ export const getPzemHistory = async (req, res) => {
         GROUP BY outlet_id
         ORDER BY outlet_id
       `,
-      requestedDate
-        ? sql`
-            SELECT ${requestedDate}::date AS period, COALESCE(SUM(hourly_used_kwh), 0) AS total_kwh
-            FROM readings
-            WHERE recorded_at >= ${requestedDate}::date
-              AND recorded_at < ${requestedDate}::date + INTERVAL '1 day'
-          `
-        : sql`
-            SELECT CURRENT_DATE AS period, COALESCE(SUM(hourly_used_kwh), 0) AS total_kwh
-            FROM readings
-            WHERE recorded_at >= CURRENT_DATE
-              AND recorded_at < CURRENT_DATE + INTERVAL '1 day'
-          `,
+      sql`
+        SELECT ${selectedDate}::date AS period, COALESCE(SUM(hourly_used_kwh), 0) AS total_kwh
+        FROM readings
+        WHERE recorded_at >= ${selectedDayStart.toISOString()}::timestamptz
+          AND recorded_at < ${nextSelectedDayStart.toISOString()}::timestamptz
+      `,
+      sql`
+        SELECT date_trunc('hour', recorded_at AT TIME ZONE 'Asia/Manila') AS period,
+          SUM(hourly_used_kwh) AS total_kwh
+        FROM readings
+        WHERE recorded_at >= ${selectedDayStart.toISOString()}::timestamptz
+          AND recorded_at < ${nextSelectedDayStart.toISOString()}::timestamptz
+        GROUP BY 1 ORDER BY period
+      `,
+      sql`
+        SELECT date_trunc('day', recorded_at AT TIME ZONE 'Asia/Manila') AS period,
+          SUM(hourly_used_kwh) AS total_kwh
+        FROM readings
+        WHERE recorded_at >= ${monthStart.toISOString()}::timestamptz
+          AND recorded_at < ${nextMonthStart.toISOString()}::timestamptz
+        GROUP BY 1
+        ORDER BY period
+      `,
+      sql`
+        SELECT COALESCE(SUM(hourly_used_kwh), 0) AS total_kwh
+        FROM readings
+        WHERE recorded_at >= ${monthStart.toISOString()}::timestamptz
+          AND recorded_at < ${nextMonthStart.toISOString()}::timestamptz
+      `,
+      sql`
+        SELECT COALESCE(SUM(hourly_used_kwh), 0) AS total_kwh
+        FROM readings
+        WHERE recorded_at >= ${yearStart.toISOString()}::timestamptz
+          AND recorded_at < ${nextYearStart.toISOString()}::timestamptz
+      `,
+      sql`
+        SELECT date_trunc('month', recorded_at AT TIME ZONE 'Asia/Manila') AS period,
+          SUM(hourly_used_kwh) AS total_kwh
+        FROM readings
+        WHERE recorded_at >= ${yearStart.toISOString()}::timestamptz
+          AND recorded_at < ${nextYearStart.toISOString()}::timestamptz
+        GROUP BY 1 ORDER BY period
+      `,
     ]);
 
     return res.json({
@@ -188,6 +231,13 @@ export const getPzemHistory = async (req, res) => {
       monthly,
       relayTotals: { hourly: relayHourly, daily: relayDaily, monthly: relayMonthly },
       selectedDay: selectedDay[0] || null,
+      calendarYear,
+      calendarMonth,
+      calendarHourly,
+      calendarDaily,
+      calendarMonthly,
+      calendarMonthTotal: calendarMonthTotal[0]?.total_kwh || 0,
+      calendarYearTotal: calendarYearTotal[0]?.total_kwh || 0,
     });
   } catch (error) {
     console.error("PZEM history error:", error);

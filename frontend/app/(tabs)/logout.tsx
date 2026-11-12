@@ -2,11 +2,18 @@ import React, { useCallback } from 'react';
 import { ActivityIndicator, Alert, Platform, StyleSheet, View } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { Storage } from '@/utils/storage';
+import axios from 'axios';
+import { BASE_URL } from '@/utils/api';
 
 export default function Logout() {
   useFocusEffect(useCallback(() => {
     let active = true;
     const finishLogout = async () => {
+      const refreshToken = await Storage.getItem('refreshToken');
+      if (refreshToken) {
+        try { await axios.post(`${BASE_URL}/api/auth/logout`, { refreshToken }); } catch {}
+      }
+      await Storage.removeItem('refreshToken');
       await Storage.removeItem('token');
       await Storage.removeItem('userId');
       await Storage.removeItem('role');

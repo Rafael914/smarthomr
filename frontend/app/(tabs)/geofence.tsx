@@ -1,10 +1,10 @@
 // app/(tabs)/geofence.tsx
-import { ScrollView, StyleSheet, SafeAreaView, Platform, View } from "react-native";
+import { ScrollView, StyleSheet, Platform, View } from "react-native";
 import { GeofenceSettings } from "../../components/GeofenceSettings";
 
 export default function GeofenceScreen() {
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {Platform.OS === "web" ? (
         <View style={styles.webContainer}>
           <GeofenceSettings />
@@ -17,7 +17,7 @@ export default function GeofenceScreen() {
           <GeofenceSettings />
         </ScrollView>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

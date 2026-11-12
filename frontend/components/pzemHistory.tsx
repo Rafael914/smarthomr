@@ -7,6 +7,7 @@ import { fetchEnergyBudget } from "../axiosFolder/energyBudget";
 import CostAnalyticsCharts from "./CostAnalyticsCharts";
 
 const REFRESH_INTERVAL_MS = 60_000;
+const HISTORY_PAGE_SIZE = 10;
 type Period = "hourly" | "daily" | "monthly";
 function formatKwh(value: string | number | undefined): string {
   const number = Number(value);
@@ -43,6 +44,7 @@ export default function PzemHistory() {
   const [loading, setLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [period, setPeriod] = useState<Period>("hourly");
+  const [historyPage, setHistoryPage] = useState(1);
   const [ratePerKwh, setRatePerKwh] = useState(0);
   const today = new Date();
   const [calendarMonth, setCalendarMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -54,7 +56,7 @@ export default function PzemHistory() {
     try {
       setHasError(false);
       const [historyResult, budgetResult] = await Promise.allSettled([
-        fetchPzemHistory(),
+        fetchPzemHistory(selectedDate, { year: calendarMonth.getFullYear(), month: calendarMonth.getMonth() + 1 }),
         fetchEnergyBudget(),
       ]);
       if (historyResult.status === "rejected") throw historyResult.reason;
@@ -69,30 +71,35 @@ export default function PzemHistory() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [calendarMonth, selectedDate]);
 
-  const loadSelectedDay = useCallback(async (date: string) => {
+  const loadSelectedDay = useCallback(async (date: string, year = calendarMonth.getFullYear(), month = calendarMonth.getMonth() + 1) => {
     setSelectedDayLoading(true);
     try {
-      const result = await fetchPzemHistory(date);
+      const result = await fetchPzemHistory(date, { year, month });
       setSelectedDayUsage(Number(result.selectedDay?.total_kwh) || 0);
+      setHistory((current) => current ? { ...current, ...result } : result);
     } catch (error) {
       console.error("Selected day history error:", error);
     } finally {
       setSelectedDayLoading(false);
     }
-  }, []);
+  }, [calendarMonth]);
 
   const selectDate = (date: Date) => {
     const key = dateKey(date);
     setSelectedDate(key);
+    setPeriod("hourly");
     loadSelectedDay(key);
   };
 
   const goToMonth = (year: number, month: number) => {
     const firstOfMonth = new Date(year, month, 1);
     setCalendarMonth(firstOfMonth);
-    selectDate(firstOfMonth);
+    setPeriod("daily");
+    const key = dateKey(firstOfMonth);
+    setSelectedDate(key);
+    loadSelectedDay(key, year, month + 1);
   };
 
   const firstDay = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1).getDay();
@@ -108,12 +115,14 @@ export default function PzemHistory() {
     return () => clearInterval(interval);
   }, [loadHistory]);
 
-  const monthlyTotal = history?.monthly.reduce((total, item) => total + (Number(item.total_kwh) || 0), 0) || 0;
-  const currentMonth = Number(history?.monthly[0]?.total_kwh) || 0;
-  const previousMonth = Number(history?.monthly[1]?.total_kwh) || 0;
-  const todayUsage = Number(history?.daily[0]?.total_kwh) || 0;
-  const monthChange = previousMonth > 0 ? ((currentMonth - previousMonth) / previousMonth) * 100 : null;
-  const records = history?.[period] || [];
+  const monthlyTotal = Number(history?.calendarYearTotal) || 0;
+  const currentMonth = Number(history?.calendarMonthTotal) || 0;
+  const selectedDayTotal = Number(history?.selectedDay?.total_kwh ?? selectedDayUsage) || 0;
+  const records = period === "hourly"
+    ? history?.calendarHourly || []
+    : period === "daily"
+      ? history?.calendarDaily || []
+      : history?.calendarMonthly || [];
   const costRecords = records.map((item) => ({
     ...item,
     usage: Number(item.total_kwh) || 0,
@@ -121,6 +130,7 @@ export default function PzemHistory() {
     label: formatRecordLabel(item.period, period),
   }));
   const totalPeriodCost = costRecords.reduce((total, item) => total + item.estimatedCost, 0);
+  const totalPeriodUsage = costRecords.reduce((total, item) => total + item.usage, 0);
   const averagePeriodCost = costRecords.length ? totalPeriodCost / costRecords.length : 0;
   const averagePeriodUsage = costRecords.length
     ? costRecords.reduce((total, item) => total + item.usage, 0) / costRecords.length
@@ -130,8 +140,18 @@ export default function PzemHistory() {
     null,
   );
   const maxCost = Math.max(...costRecords.map((item) => item.estimatedCost), 0.001);
-  const periodLabels: Record<Period, string> = { hourly: "24 Hours", daily: "Today", monthly: "12 Months" };
+  const pageCount = Math.max(1, Math.ceil(costRecords.length / HISTORY_PAGE_SIZE));
+  const visibleCostRecords = costRecords.slice((historyPage - 1) * HISTORY_PAGE_SIZE, historyPage * HISTORY_PAGE_SIZE);
+  const periodLabels: Record<Period, string> = {
+    hourly: "Selected Day",
+    daily: calendarMonth.toLocaleDateString(undefined, { month: "short", year: "numeric" }),
+    monthly: String(calendarMonth.getFullYear()),
+  };
   const averageUnit: Record<Period, string> = { hourly: "per recorded hour", daily: "per day", monthly: "per month" };
+
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [selectedDate, calendarMonth, period]);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -158,12 +178,12 @@ export default function PzemHistory() {
         <>
           <View style={styles.kpiGrid}>
             <View style={[styles.kpiCard, styles.kpiPrimary]}>
-              <Ionicons name="cash-outline" style={styles.kpiIcon} /><Text style={styles.kpiLabel}>EST. COST TODAY</Text>
-              <Text style={styles.kpiValue}>{ratePerKwh > 0 ? formatPeso(todayUsage * ratePerKwh) : "Set rate"}</Text>
-              <Text style={styles.kpiUnit}>{formatKwh(todayUsage)} kWh used</Text>
+              <Ionicons name="cash-outline" style={styles.kpiIcon} /><Text style={styles.kpiLabel}>EST. COST — {selectedDate}</Text>
+              <Text style={styles.kpiValue}>{ratePerKwh > 0 ? formatPeso(selectedDayTotal * ratePerKwh) : "Set rate"}</Text>
+              <Text style={styles.kpiUnit}>{formatKwh(selectedDayTotal)} kWh used</Text>
             </View>
             <View style={styles.kpiCard}>
-              <Ionicons name="calendar-outline" style={styles.kpiIcon} /><Text style={styles.kpiLabel}>EST. COST THIS MONTH</Text>
+              <Ionicons name="calendar-outline" style={styles.kpiIcon} /><Text style={styles.kpiLabel}>EST. COST — {calendarMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" }).toUpperCase()}</Text>
               <Text style={styles.kpiValue}>{ratePerKwh > 0 ? formatPeso(currentMonth * ratePerKwh) : "Set rate"}</Text>
               <Text style={styles.kpiUnit}>{formatKwh(currentMonth)} kWh used</Text>
             </View>
@@ -171,10 +191,10 @@ export default function PzemHistory() {
 
           <View style={styles.monthSummary}>
             <View>
-              <Text style={styles.monthSummaryLabel}>12-month estimated cost</Text>
+              <Text style={styles.monthSummaryLabel}>ESTIMATED COST — {calendarMonth.getFullYear()}</Text>
               <Text style={styles.monthSummaryValue}>{ratePerKwh > 0 ? formatPeso(monthlyTotal * ratePerKwh) : "Set rate to estimate"}</Text>
               <Text style={styles.monthSummaryLabel}>{formatKwh(monthlyTotal)} kWh recorded</Text>
-              {monthChange !== null ? <Text style={styles.monthSummaryTrend}>{ratePerKwh > 0 ? "Cost" : "Usage"} {monthChange === 0 ? "unchanged" : `${monthChange > 0 ? "up" : "down"} ${Math.abs(monthChange).toFixed(1)}%`} vs previous month</Text> : null}
+              <Text style={styles.monthSummaryTrend}>{formatKwh(currentMonth)} kWh in {calendarMonth.toLocaleDateString(undefined, { month: "long" })}</Text>
             </View>
 
             <View style={{ alignItems: "flex-end" }}>
@@ -279,7 +299,7 @@ export default function PzemHistory() {
 
           {records.length ? (
             <View style={styles.historyList}>
-              {costRecords.map((item) => {
+              {visibleCostRecords.map((item) => {
                 const barWidth = `${Math.max((item.estimatedCost / maxCost) * 100, 3)}%` as `${number}%`;
                 return (
                   <View key={item.period} style={styles.historyCard}>
@@ -291,6 +311,34 @@ export default function PzemHistory() {
                   </View>
                 );
               })}
+              {costRecords.length > HISTORY_PAGE_SIZE ? (
+                <View style={styles.pagination}>
+                  <TouchableOpacity
+                    style={[styles.paginationButton, historyPage === 1 && styles.paginationButtonDisabled]}
+                    onPress={() => setHistoryPage((page) => Math.max(1, page - 1))}
+                    disabled={historyPage === 1}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.paginationButtonText}>Previous</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.paginationLabel}>Page {historyPage} of {pageCount}</Text>
+                  <TouchableOpacity
+                    style={[styles.paginationButton, historyPage === pageCount && styles.paginationButtonDisabled]}
+                    onPress={() => setHistoryPage((page) => Math.min(pageCount, page + 1))}
+                    disabled={historyPage === pageCount}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.paginationButtonText}>Next</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+              <View style={styles.historyTotal}>
+                <View>
+                  <Text style={styles.historyTotalLabel}>TOTAL FOR {period === "daily" ? calendarMonth.toLocaleDateString(undefined, { month: "long", year: "numeric" }).toUpperCase() : periodLabels[period].toUpperCase()}</Text>
+                  <Text style={styles.historyTotalUsage}>{formatKwh(totalPeriodUsage)} kWh</Text>
+                </View>
+                <Text style={styles.historyTotalCost}>{ratePerKwh > 0 ? formatPeso(totalPeriodCost) : "Set rate"}</Text>
+              </View>
             </View>
           ) : (
             <View style={styles.emptyState}><Text style={styles.emptyIcon}>◌</Text><Text style={styles.emptyTitle}>No records yet</Text><Text style={styles.message}>Usage data will appear here after the next reading.</Text></View>

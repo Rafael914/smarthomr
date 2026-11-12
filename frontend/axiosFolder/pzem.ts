@@ -11,7 +11,16 @@ export type PzemHistoryResponse = {
   daily: PzemHistoryItem[];
   monthly: PzemHistoryItem[];
   selectedDay?: PzemHistoryItem;
+  calendarYear?: number;
+  calendarMonth?: number;
+  calendarHourly?: PzemHistoryItem[];
+  calendarDaily?: PzemHistoryItem[];
+  calendarMonthly?: PzemHistoryItem[];
+  calendarMonthTotal?: string | number;
+  calendarYearTotal?: string | number;
 };
+
+export type PzemHistorySelection = { year: number; month: number };
 
 export const fetchPzem = async () => {
   try {
@@ -37,9 +46,9 @@ export const fetchPzem = async () => {
   }
 };
 
-export const fetchPzemHistory = async (date?: string): Promise<PzemHistoryResponse> => {
+export const fetchPzemHistory = async (date?: string, selection?: PzemHistorySelection): Promise<PzemHistoryResponse> => {
   const res = await axios.get(`${BASE_URL}/api/pzem/history`, {
-    params: date ? { date } : undefined,
+    params: { ...(date ? { date } : {}), ...(selection || {}) },
     timeout: 5000,
   });
 
