@@ -10,7 +10,9 @@ import morgan from "morgan";
 import cors from "cors";
 
 import relayRoutes from "./routes/relayRoutes.js";
+import auditRoutes from "./routes/auditRoutes.js";
 import { initRelayStateTable } from "./controller/relayController.js";
+import { initAuditLogTable } from "./controller/auditController.js";
 import pzemRoutes from "./routes/pzemRoutes.js"
 // import { aj } from "./lib/arcjet.js";
 import { sql } from "./config/db.js";
@@ -75,6 +77,7 @@ app.use(morgan("dev"));
 // });
 
 app.use("/api/relay", relayRoutes);
+app.use("/api/audit", auditRoutes);
 app.use("/api/pzem", pzemRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/geofence', geofenceRoutes);
@@ -87,6 +90,7 @@ app.get("/", (req, res) => {
 
 async function   initDB() {
   await initUsersTable();
+  await initAuditLogTable();
   await initRelayStateTable();
   await initGeofenceTable();
   await initPzemReadingsTable();

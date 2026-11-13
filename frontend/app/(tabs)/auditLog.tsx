@@ -24,7 +24,7 @@ export default function AuditLogScreen() {
     setError('');
     try {
       const token = await Storage.getItem('token');
-      const response = await axios.get(`${BASE_URL}/api/relay/audit?limit=200`, {
+      const response = await axios.get(`${BASE_URL}/api/audit?limit=200`, {
         headers: { Authorization: `Bearer ${token}` }, timeout: 10000,
       });
       setEntries(response.data.entries || []);

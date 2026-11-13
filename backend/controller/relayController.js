@@ -1,4 +1,5 @@
 import { sql } from "../config/db.js";
+import { recordRelayAuditEvent } from "./auditController.js";
 
 let relayState = {
     relay1: false,
@@ -27,22 +28,6 @@ export const initRelayStateTable = async () => {
             state JSONB NOT NULL DEFAULT '{"relay1":false,"relay2":false,"relay3":false,"relay4":false,"relay5":false,"auto":false}'::jsonb,
             updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
-    `;
-
-    await sql`
-        CREATE TABLE IF NOT EXISTS relay_audit_log (
-            id BIGSERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-            username TEXT NOT NULL,
-            email TEXT NOT NULL,
-            relay TEXT NOT NULL CHECK (relay IN ('relay1','relay2','relay3','relay4','relay5')),
-            action TEXT NOT NULL CHECK (action IN ('ON','OFF')),
-            occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-        )
-    `;
-    await sql`
-        CREATE INDEX IF NOT EXISTS relay_audit_log_occurred_at_idx
-        ON relay_audit_log (occurred_at DESC)
     `;
 
     await sql`
@@ -95,10 +80,11 @@ export const postUpdateRelay = async (req, res) => {
 
         await persistRelayState(nextState);
         for (const relay of changedRelays) {
-            await sql`
-                INSERT INTO relay_audit_log (user_id, username, email, relay, action)
-                VALUES (${req.user.id}, ${req.user.name}, ${req.user.email}, ${relay}, ${nextState[relay] ? "ON" : "OFF"})
-            `;
+            await recordRelayAuditEvent({
+                user: req.user,
+                relay,
+                action: nextState[relay] ? "ON" : "OFF",
+            });
         }
         relayState = nextState;
 
@@ -114,21 +100,5 @@ export const postUpdateRelay = async (req, res) => {
         res.status(500).json({
             success: false
         });
-    }
-};
-
-export const getRelayAuditLog = async (req, res) => {
-    try {
-        const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 100, 1), 500);
-        const rows = await sql`
-            SELECT id, user_id, username, email, relay, action, occurred_at
-            FROM relay_audit_log
-            ORDER BY occurred_at DESC, id DESC
-            LIMIT ${limit}
-        `;
-        res.status(200).json({ success: true, entries: rows });
-    } catch (error) {
-        console.error("RELAY AUDIT LOG ERROR:", error);
-        res.status(500).json({ success: false, message: "Could not load relay audit log" });
     }
 };
