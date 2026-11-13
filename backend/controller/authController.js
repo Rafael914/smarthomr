@@ -4,8 +4,8 @@ import { createHash, randomBytes } from "node:crypto";
 import { sql } from "../config/db.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback_secret";
-const ACCESS_TOKEN_TTL = "15m";
-const REFRESH_TOKEN_TTL_DAYS = 30;
+const ACCESS_TOKEN_TTL = "5d";
+const REFRESH_TOKEN_TTL_DAYS = 5;
 const hashRefreshToken = (token) => createHash("sha256").update(token).digest("hex");
 
 const createAccessToken = (user) => jwt.sign(
@@ -134,7 +134,7 @@ export const login = async (req, res) => {
     }
     const token = createAccessToken(user);
     const refreshToken = await issueRefreshToken(user.id);
-    return res.json({ success: true, token, refreshToken, expiresIn: 900, user: publicUser(user) });
+    return res.json({ success: true, token, refreshToken, expiresIn: 432000, user: publicUser(user) });
   } catch (error) {
     console.error("LOGIN ERROR:", error);
     return res.status(500).json({ success: false, message: "Server error during login" });
@@ -162,7 +162,7 @@ export const refresh = async (req, res) => {
     const user = users[0];
     const token = createAccessToken(user);
     const nextRefreshToken = await issueRefreshToken(user.id);
-    return res.json({ success: true, token, refreshToken: nextRefreshToken, expiresIn: 900, user: publicUser(user) });
+    return res.json({ success: true, token, refreshToken: nextRefreshToken, expiresIn: 432000, user: publicUser(user) });
   } catch (error) {
     console.error("TOKEN REFRESH ERROR:", error);
     return res.status(500).json({ success: false, message: "Could not refresh session" });
