@@ -55,6 +55,7 @@ export default function TabLayout() {
       <Tabs.Screen name="index" options={{ title: 'Dashboard', tabBarItemStyle: { flexGrow: 0, flexShrink: 0, flexBasis: 132, marginStart: 'auto' }, tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" color={color} size={size} /> }} />
       <Tabs.Screen name="blueprint" options={{ title: 'Blueprint', tabBarIcon: ({ color, size }) => <Ionicons name="flash-outline" color={color} size={size} /> }} />
       <Tabs.Screen name="pzemHistory" options={{ title: 'History', tabBarIcon: ({ color, size }) => <Ionicons name="stats-chart-outline" color={color} size={size} /> }} />
+      <Tabs.Screen name="auditLog" options={{ title: 'Audit Log', href: isAdmin ? undefined : null, tabBarIcon: ({ color, size }) => <Ionicons name="list-outline" color={color} size={size} /> }} />
       <Tabs.Screen name="geofence" options={{ title: 'Geofence', href: isAdmin ? undefined : null, tabBarIcon: ({ color, size }) => <Ionicons name="location-outline" color={color} size={size} /> }} />
       <Tabs.Screen name="register" options={{ title: 'Register', href: isAdmin ? undefined : null, tabBarIcon: ({ color, size }) => <Ionicons name="person-add-outline" color={color} size={size} /> }} />
       <Tabs.Screen name="logout" options={{ title: 'Log out', tabBarItemStyle: { flexGrow: 0, flexShrink: 0, flexBasis: 132, marginEnd: 'auto' }, tabBarIcon: ({ color, size }) => <Ionicons name="log-out-outline" color={color} size={size} /> }} />
