@@ -20,6 +20,11 @@ let lastEnergy = {
   pzem5: 0,
 };
 
+const normalizeMetric = (value) => {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : 0;
+};
+
 export const initPzemReadingsTable = async () => {
   await sql`
     CREATE TABLE IF NOT EXISTS readings (
@@ -76,7 +81,14 @@ export const addReading = async (req, res) => {
         const { outlet_id, voltage, current, power, energy, frequency, pf } = item;
         
         // Extract metrics nicely matching the incoming ESP32 JSON schema
-        const metrics = { voltage, current, power, energy, frequency, pf };
+        const metrics = {
+          voltage: normalizeMetric(voltage),
+          current: normalizeMetric(current),
+          power: normalizeMetric(power),
+          energy: normalizeMetric(energy),
+          frequency: normalizeMetric(frequency),
+          pf: normalizeMetric(pf),
+        };
 
         const id = Number(outlet_id);
         if (Number.isInteger(id) && id >= 1 && id <= 5) {

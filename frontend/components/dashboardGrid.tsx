@@ -54,6 +54,17 @@ type PzemReading = {
   pf: number;
 };
 
+const normalizePzemReading = (reading: Partial<PzemReading>): PzemReading => ({
+  outlet_id: Number(reading.outlet_id) || 0,
+  outlet_name: String(reading.outlet_name || ""),
+  voltage: Number.isFinite(Number(reading.voltage)) ? Number(reading.voltage) : 0,
+  current: Number.isFinite(Number(reading.current)) ? Number(reading.current) : 0,
+  power: Number.isFinite(Number(reading.power)) ? Number(reading.power) : 0,
+  energy: Number.isFinite(Number(reading.energy)) ? Number(reading.energy) : 0,
+  frequency: Number.isFinite(Number(reading.frequency)) ? Number(reading.frequency) : 0,
+  pf: Number.isFinite(Number(reading.pf)) ? Number(reading.pf) : 0,
+});
+
 const ELECTRICAL_STANDARD = {
   minVoltage: 207,
   maxVoltage: 253,
@@ -80,7 +91,7 @@ export default function DashboardGrid() {
   const loadPzem = async () => {
     const data = await fetchPzem();
 
-    setPzemReadings(data.readings);
+    setPzemReadings(data.readings.map(normalizePzemReading));
     setPzemError(data.error);
   };
 
@@ -101,7 +112,7 @@ export default function DashboardGrid() {
         try {
           const message = JSON.parse(String(event.data));
           if (message.type === "pzem_update" && Array.isArray(message.readings)) {
-            setPzemReadings(message.readings);
+            setPzemReadings(message.readings.map(normalizePzemReading));
             setPzemError(false);
           }
         } catch (error) {
