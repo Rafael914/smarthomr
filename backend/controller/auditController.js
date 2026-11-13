@@ -27,14 +27,21 @@ export const recordRelayAuditEvent = async ({ user, relay, action }) => {
 
 export const getRelayAuditLog = async (req, res) => {
     try {
-        const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 100, 1), 500);
-        const rows = await sql`
-            SELECT id, user_id, username, email, relay, action, occurred_at
-            FROM relay_audit_log
-            ORDER BY occurred_at DESC, id DESC
-            LIMIT ${limit}
-        `;
-        res.status(200).json({ success: true, entries: rows });
+        const page = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+        const pageSize = 10;
+        const offset = (page - 1) * pageSize;
+        const [countRows, rows] = await Promise.all([
+            sql`SELECT COUNT(*)::int AS total FROM relay_audit_log`,
+            sql`
+                SELECT id, user_id, username, email, relay, action, occurred_at
+                FROM relay_audit_log
+                ORDER BY occurred_at DESC, id DESC
+                LIMIT ${pageSize} OFFSET ${offset}
+            `,
+        ]);
+        const total = Number(countRows[0]?.total || 0);
+        const totalPages = Math.max(Math.ceil(total / pageSize), 1);
+        res.status(200).json({ success: true, entries: rows, page, pageSize, total, totalPages });
     } catch (error) {
         console.error("RELAY AUDIT LOG ERROR:", error);
         res.status(500).json({ success: false, message: "Could not load relay audit log" });

@@ -19,23 +19,28 @@ export default function AuditLogScreen() {
   const [entries, setEntries] = useState<AuditEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   const load = useCallback(async () => {
     setError('');
     try {
       const token = await Storage.getItem('token');
-      const response = await axios.get(`${BASE_URL}/api/audit?limit=200`, {
+      const response = await axios.get(`${BASE_URL}/api/audit?page=${page}`, {
         headers: { Authorization: `Bearer ${token}` }, timeout: 10000,
       });
       setEntries(response.data.entries || []);
+      setTotalPages(response.data.totalPages || 1);
+      setTotal(response.data.total || 0);
     } catch (e: any) {
       setError(e?.response?.data?.message || 'Could not load relay activity.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setLoading(true); load(); }, [load]);
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 20, maxWidth: 980, width: '100%', alignSelf: 'center' }}>
@@ -58,6 +63,17 @@ export default function AuditLogScreen() {
           <Text style={{ color: entry.action === 'ON' ? colors.green : colors.red, fontWeight: '900', minWidth: 40, textAlign: 'right' }}>{entry.action}</Text>
         </View>
       ))}
+      {!loading && !error && total > 0 && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, marginBottom: 12 }}>
+          <TouchableOpacity disabled={page <= 1} onPress={() => setPage((current) => Math.max(current - 1, 1))} style={{ opacity: page <= 1 ? 0.4 : 1, backgroundColor: colors.panel, borderColor: colors.border, borderWidth: 1, borderRadius: 9, paddingHorizontal: 14, paddingVertical: 10 }}>
+            <Text style={{ color: colors.green, fontWeight: '700' }}>Previous</Text>
+          </TouchableOpacity>
+          <Text style={{ color: colors.muted }}>Page {page} of {totalPages} · {total} entries</Text>
+          <TouchableOpacity disabled={page >= totalPages} onPress={() => setPage((current) => Math.min(current + 1, totalPages))} style={{ opacity: page >= totalPages ? 0.4 : 1, backgroundColor: colors.panel, borderColor: colors.border, borderWidth: 1, borderRadius: 9, paddingHorizontal: 14, paddingVertical: 10 }}>
+            <Text style={{ color: colors.green, fontWeight: '700' }}>Next</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </ScrollView>
   );
 }
