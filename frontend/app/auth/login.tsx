@@ -19,6 +19,7 @@ import { Storage } from "../../utils/storage";
 import { router } from "expo-router";
 import { BASE_URL } from "../../utils/api";
 import { Ionicons } from "@expo/vector-icons";
+import { resetAuthLogoutState, scheduleAuthLogout } from "../../utils/authSession";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -89,6 +90,8 @@ export default function Login() {
       await Storage.setItem("userId", userId.toString());
       await Storage.setItem("role", res.data.user?.role || "user");
 
+      resetAuthLogoutState();
+      await scheduleAuthLogout(Number(res.data.expiresIn) || 900);
 
       router.replace("/(tabs)");
     } catch (err: any) {
