@@ -29,7 +29,7 @@ function BluePrint() {
   const [relay2, setRelay2] = useState(false); // 1st Fl: Kitchen / Dining
   const [relay3, setRelay3] = useState(false); // 2nd Fl: Master Bedroom
   const [relay4, setRelay4] = useState(false); // 2nd Fl: Media Room
-  const [relay5, setRelay5] = useState(false); // 2nd Fl: Balcony
+  const [relay5, setRelay5] = useState(false); // 2nd Fl: Home Office
 
   const fetchRelay = async () => {
     try {
@@ -211,7 +211,7 @@ function BluePrint() {
               <View style={styles.viewportContainer}>
                 <View style={styles.firstFloorRoomStack}>
                   {/* LIVING ROOM */}
-                  <View style={[styles.firstFloorRoom, relay1 && styles.roomActive]}>
+                  <View style={[styles.firstFloorRoom, styles.borderRight, relay1 && styles.roomActive]}>
                     <Text style={[styles.roomLabel, relay1 && styles.textCyan]}>LIVING AREA</Text>
                     <Text style={styles.dimensionText}>4.50m x 4.00m</Text>
                     <TouchableOpacity
@@ -249,8 +249,8 @@ function BluePrint() {
               </View>
             ) : (
               /* ════════════════ SECOND FLOOR VIEWPORT ════════════════ */
-              <View style={styles.viewportContainer}>
-                <View style={styles.interiorGridRow}>
+              <View style={[styles.viewportContainer, styles.secondFloorViewport]}>
+                <View style={[styles.interiorGridRow, styles.secondFloorInteriorGrid]}>
                   {/* MASTER BEDROOM */}
                   <View style={[styles.roomContainer, styles.borderRight, relay3 && styles.roomActive]}>
                     <Text style={[styles.roomLabel, relay3 && styles.textCyan]}>MASTER BEDROOM</Text>
@@ -280,11 +280,11 @@ function BluePrint() {
                   </View>
                 </View>
 
-                {/* FRONT BALCONY */}
-                <View style={[styles.exteriorRowContainer, relay5 && styles.roomActive]}>
+                {/* HOME OFFICE */}
+                <View style={[styles.exteriorRowContainer, styles.secondFloorExterior, relay5 && styles.roomActive]}>
                   <View style={styles.exteriorMetaContainer}>
-                    <Text style={[styles.roomLabel, relay5 && styles.textCyan]}>FRONT BALCONY</Text>
-                    <Text style={styles.dimensionText}>7.70m x 1.50m [VOID OPEN TO BELOW]</Text>
+                    <Text style={[styles.roomLabel, relay5 && styles.textCyan]}>HOME OFFICE</Text>
+                    <Text style={styles.dimensionText}>7.70m x 1.50m</Text>
                   </View>
                   <TouchableOpacity
                     style={[styles.powerBtn, relay5 && styles.powerBtnActive]}

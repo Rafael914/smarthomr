@@ -142,6 +142,17 @@ const styles = StyleSheet.create({
   viewportContainer: {
     flex: 1,
   },
+  secondFloorViewport: {
+    flexDirection: 'row',
+  },
+  secondFloorInteriorGrid: {
+    flex: 2,
+  },
+  secondFloorExterior: {
+    flex: 1,
+    padding: 10,
+    backgroundColor: '#002240',
+  },
   gridOverlayLayer1: {
     ...StyleSheet.absoluteFillObject,
     opacity: 0.08,
@@ -182,8 +193,8 @@ const styles = StyleSheet.create({
   interiorGridRow: {
     flex: 3.8,
     flexDirection: 'row',
-    borderBottomWidth: 2,
-    borderBottomColor: '#00ffff',
+    borderRightWidth: 3,
+    borderRightColor: '#00ffff',
   },
   mainEntryRow: {
     flex: 1.2,
@@ -196,7 +207,7 @@ const styles = StyleSheet.create({
   },
   firstFloorRoomStack: {
     flex: 3.8,
-    flexDirection: 'column-reverse',
+    flexDirection: 'row',
   },
   firstFloorRoom: {
     flex: 1,
@@ -204,8 +215,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 10,
     backgroundColor: '#002240',
-    borderBottomWidth: 1,
-    borderBottomColor: '#00ffff',
   },
   exteriorRowContainer: {
     flex: 1.2,
@@ -215,7 +224,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#00294d',
   },
   borderRight: {
-    borderRightWidth: 2,
+    borderRightWidth: 3,
     borderRightColor: '#00ffff',
   },
   roomContainer: {
