@@ -1,12 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, useWindowDimensions } from 'react-native';
 import { Storage } from '@/utils/storage';
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
 
 export default function TabLayout() {
+  const { width } = useWindowDimensions();
+  const compactWebTabs = Platform.OS === 'web' && width < 700;
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
   useEffect(() => {
@@ -47,18 +49,25 @@ export default function TabLayout() {
         },
         tabBarActiveTintColor: '#6ee7b7',
         tabBarInactiveTintColor: '#8392a5',
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '700', marginBottom: 8 },
-        tabBarIconStyle: { marginTop: 7, justifyContent: 'center', alignItems: 'center' },
-        tabBarItemStyle: { flexGrow: 0, flexShrink: 0, flexBasis: 132 },
+        tabBarLabelStyle: {
+          fontSize: compactWebTabs ? 9 : 12,
+          fontWeight: '700',
+          marginBottom: compactWebTabs ? 5 : 8,
+          textAlign: 'center',
+        },
+        tabBarIconStyle: { marginTop: compactWebTabs ? 5 : 7, justifyContent: 'center', alignItems: 'center' },
+        tabBarItemStyle: compactWebTabs
+          ? { flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0, paddingHorizontal: 0 }
+          : { flexGrow: 0, flexShrink: 0, flexBasis: 132 },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Dashboard', tabBarItemStyle: { flexGrow: 0, flexShrink: 0, flexBasis: 132, marginStart: 'auto' }, tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" color={color} size={size} /> }} />
+      <Tabs.Screen name="index" options={{ title: 'Dashboard', tabBarItemStyle: compactWebTabs ? undefined : { flexGrow: 0, flexShrink: 0, flexBasis: 132 }, tabBarIcon: ({ color, size }) => <Ionicons name="grid-outline" color={color} size={size} /> }} />
       <Tabs.Screen name="blueprint" options={{ title: 'Blueprint', tabBarIcon: ({ color, size }) => <Ionicons name="flash-outline" color={color} size={size} /> }} />
       <Tabs.Screen name="pzemHistory" options={{ title: 'History', tabBarIcon: ({ color, size }) => <Ionicons name="stats-chart-outline" color={color} size={size} /> }} />
       <Tabs.Screen name="auditLog" options={{ title: 'Audit Log', href: isAdmin ? undefined : null, tabBarIcon: ({ color, size }) => <Ionicons name="list-outline" color={color} size={size} /> }} />
       <Tabs.Screen name="geofence" options={{ title: 'Geofence', href: isAdmin ? undefined : null, tabBarIcon: ({ color, size }) => <Ionicons name="location-outline" color={color} size={size} /> }} />
       <Tabs.Screen name="register" options={{ title: 'Register', href: isAdmin ? undefined : null, tabBarIcon: ({ color, size }) => <Ionicons name="person-add-outline" color={color} size={size} /> }} />
-      <Tabs.Screen name="logout" options={{ title: 'Log out', tabBarItemStyle: { flexGrow: 0, flexShrink: 0, flexBasis: 132, marginEnd: 'auto' }, tabBarIcon: ({ color, size }) => <Ionicons name="log-out-outline" color={color} size={size} /> }} />
+      <Tabs.Screen name="logout" options={{ title: 'Log out', tabBarItemStyle: compactWebTabs ? undefined : { flexGrow: 0, flexShrink: 0, flexBasis: 132 }, tabBarIcon: ({ color, size }) => <Ionicons name="log-out-outline" color={color} size={size} /> }} />
     </Tabs>
   );
 }

@@ -304,13 +304,41 @@ export default function DashboardGrid() {
   const standardAlertKey = standardAlerts.join("|");
   const [lastAlertKey, setLastAlertKey] = useState("");
 
+  const [webNotificationPermission, setWebNotificationPermission] = useState<NotificationPermission | "unsupported">(
+    Platform.OS === "web" && typeof Notification !== "undefined" ? Notification.permission : "unsupported"
+  );
+
+  const enableWebNotifications = async () => {
+    if (Platform.OS !== "web" || typeof Notification === "undefined") {
+      setWebNotificationPermission("unsupported");
+      return;
+    }
+    const permission = await Notification.requestPermission();
+    setWebNotificationPermission(permission);
+    if (permission === "granted" && standardAlerts.length > 0) {
+      new Notification("Electrical standard exceeded", {
+        body: standardAlerts.join("\n"),
+        tag: "electrical-standard-alert",
+      });
+      setLastAlertKey(standardAlertKey);
+    }
+  };
+
   useEffect(() => {
     if (!standardAlertKey || standardAlertKey === lastAlertKey) return;
     setLastAlertKey(standardAlertKey);
     const message = standardAlerts.join("\n");
-    if (Platform.OS === "web") alert(message);
-    else Alert.alert("Electrical standard exceeded", message);
-  }, [standardAlertKey, lastAlertKey]);
+    if (Platform.OS === "web") {
+      if (webNotificationPermission === "granted" && typeof Notification !== "undefined") {
+        new Notification("Electrical standard exceeded", {
+          body: message,
+          tag: "electrical-standard-alert",
+        });
+      }
+    } else {
+      Alert.alert("Electrical standard exceeded", message);
+    }
+  }, [standardAlertKey, lastAlertKey, webNotificationPermission]);
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContent} style={styles.rootScrollView}>
@@ -436,11 +464,11 @@ export default function DashboardGrid() {
 
         <View style={{ backgroundColor: "#172033", borderRadius: 14, padding: 16, marginBottom: 20 }}>
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-            <View>
+            <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
               <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700" }}>Electrical standard</Text>
-              <Text style={{ color: "#9ca3af", marginTop: 4 }}>Automatic alerts for abnormal main-breaker readings</Text>
+              <Text style={{ color: "#9ca3af", marginTop: 4, flexShrink: 1 }}>Automatic alerts for abnormal main-breaker readings</Text>
             </View>
-            <View style={{ backgroundColor: standardAlerts.length ? "#991b1b" : "#166534", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 }}>
+            <View style={{ backgroundColor: standardAlerts.length ? "#991b1b" : "#166534", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, flexShrink: 0 }}>
               <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>{standardAlerts.length ? "Warning" : "Normal"}</Text>
             </View>
           </View>
@@ -450,6 +478,17 @@ export default function DashboardGrid() {
             <Text style={{ color: "#cbd5e1", fontSize: 12 }}>Power factor: ≥ 0.80</Text>
             <Text style={{ color: "#cbd5e1", fontSize: 12 }}>Current: ≤ 50 A</Text>
           </View>
+          {Platform.OS === "web" && webNotificationPermission !== "granted" ? (
+            <TouchableOpacity
+              onPress={enableWebNotifications}
+              disabled={webNotificationPermission === "unsupported"}
+              style={{ alignSelf: "flex-start", marginTop: 12, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, backgroundColor: "#2563eb", opacity: webNotificationPermission === "unsupported" ? 0.55 : 1 }}
+            >
+              <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>
+                {webNotificationPermission === "unsupported" ? "Notifications not supported" : "Enable website notifications"}
+              </Text>
+            </TouchableOpacity>
+          ) : null}
           {standardAlerts.length ? (
             <View style={{ backgroundColor: "#3f1515", borderRadius: 8, marginTop: 12, padding: 10 }}>
               {standardAlerts.map((alert) => <Text key={alert} style={{ color: "#fecaca", fontSize: 12 }}>• {alert}</Text>)}
