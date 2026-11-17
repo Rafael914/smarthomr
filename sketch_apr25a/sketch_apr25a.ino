@@ -17,12 +17,6 @@ constexpr int PZEM1_TX_PIN = 17;
 HardwareSerial pzemSerial1(2);
 PZEM004Tv30 pzem1(pzemSerial1, PZEM1_RX_PIN, PZEM1_TX_PIN, 0x01);
 
-HardwareSerial sim800Serial(1);
-
-constexpr int SIM800_RX_PIN = 4;
-constexpr int SIM800_TX_PIN = 5;
-constexpr uint32_t SIM800_BAUD = 9600;
-
 #define relay1 25
 #define relay2 26
 #define relay3 27
@@ -37,9 +31,6 @@ bool relayState5 = false;
 
 bool openAll = false;
 bool closeAll = false;
-
-String sim800Line;
-bool waitingForSmsBody = false;
 
 bool wasConnected = false;
 unsigned long lastWiFiAttempt = 0;
@@ -88,79 +79,6 @@ void updateRelays() {
     digitalWrite(relay3, relayState3 ? LOW : HIGH);
     digitalWrite(relay4, relayState4 ? LOW : HIGH);
     digitalWrite(relay5, relayState5 ? LOW : HIGH);
-  }
-}
-
-void handleSmsCommand(String command) {
-  command.trim();
-  command.toLowerCase();
-  command.replace(" ", "");
-
-  if (command == "all:on" || command == "allon" || command == "relay:on" || command == "relayon") {
-    setAllRelays(true);
-    Serial.println("[SMS] All relays ON");
-    updateRelays();
-    return;
-  }
-
-  if (command == "all:off" || command == "alloff" || command == "relay:off" || command == "relayoff") {
-    setAllRelays(false);
-    Serial.println("[SMS] All relays OFF");
-    updateRelays();
-    return;
-  }
-
-  if (!command.startsWith("relay") || command.length() < 9) {
-    Serial.println("[SMS] Unknown command.");
-    return;
-  }
-
-  int separator = command.indexOf(':');
-  if (separator < 6) {
-    Serial.println("[SMS] Invalid relay command.");
-    return;
-  }
-
-  uint8_t relayNumber = command.substring(5, separator).toInt();
-  String action = command.substring(separator + 1);
-
-  if (relayNumber < 1 || relayNumber > 5 || (action != "on" && action != "off")) {
-    Serial.println("[SMS] Invalid relay command.");
-    return;
-  }
-
-  setRelayState(relayNumber, action == "on");
-  Serial.printf("[SMS] Relay %u %s\n", relayNumber, action == "on" ? "ON" : "OFF");
-  updateRelays();
-}
-
-void processSim800Line(String line) {
-  line.trim();
-  if (line.startsWith("+CMT:")) {
-    waitingForSmsBody = true;
-    Serial.println("[SIM800A] Incoming SMS detected.");
-    return;
-  }
-
-  if (waitingForSmsBody) {
-    waitingForSmsBody = false;
-    if (line.length() > 0) {
-      Serial.print("[SMS] Received: ");
-      Serial.println(line);
-      handleSmsCommand(line);
-    }
-  }
-}
-
-void processSim800Messages() {
-  while (sim800Serial.available()) {
-    char character = static_cast<char>(sim800Serial.read());
-    if (character == '\n') {
-      processSim800Line(sim800Line);
-      sim800Line = "";
-    } else if (character != '\r') {
-      sim800Line += character;
-    }
   }
 }
 
@@ -302,8 +220,6 @@ void setup() {
     PZEM1_TX_PIN
   );
 
-  sim800Serial.begin(SIM800_BAUD, SERIAL_8N1, SIM800_RX_PIN, SIM800_TX_PIN);
-
   pinMode(relay1, OUTPUT);
   pinMode(relay2, OUTPUT);
   pinMode(relay3, OUTPUT);
@@ -318,19 +234,10 @@ void setup() {
 
   connectWiFi();
 
-  delay(1000);
-  sim800Serial.println("AT");
-  delay(500);
-  sim800Serial.println("AT+CMGF=1");
-  delay(500);
-  sim800Serial.println("AT+CNMI=2,2,0,0,0");
-  delay(500);
-
   Serial.println("[SYSTEM] Setup Complete.");
 }
 
 void loop() {
-  processSim800Messages();
   monitorWiFi();
 
   if (WiFi.status() != WL_CONNECTED) {

@@ -53,8 +53,27 @@ export const forceRelayOff = async (outletId) => {
     }
 };
 
+export const applySmsRelayCommand = async ({ relay, enabled, sender }) => {
+    const changed = relayState[relay] !== enabled;
+    const nextState = { ...relayState, [relay]: enabled };
+    await persistRelayState(nextState);
+    relayState = nextState;
+    if (changed) {
+        await recordRelayAuditEvent({
+            user: { id: null, name: "TextBee SMS", email: sender },
+            relay,
+            action: enabled ? "ON" : "OFF",
+        });
+    }
+    return relayState;
+};
+
 export const getRelayState = async (req, res) => {
     try {
+        const rows = await sql`SELECT state FROM relay_state WHERE id = 1`;
+        if (rows[0]?.state) {
+            relayState = { ...relayState, ...rows[0].state };
+        }
         res.status(200).json(relayState);
     } catch (error) {
         res.status(500).json({ error: "getRelay server error" });

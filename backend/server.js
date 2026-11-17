@@ -23,6 +23,7 @@ import { initGeofenceTable } from "./controller/geofenceController.js";
 import { initPzemReadingsTable } from "./controller/pzemController.js";
 import { initEnergyBudgetTable } from "./controller/energyBudgetController.js";
 import energyBudgetRoutes from "./routes/energyBudgetRoutes.js";
+import textbeeRoutes from "./routes/textbeeRoutes.js";
 import { attachPzemWebSocket } from "./services/pzemWebSocket.js";
 
 // ========================
@@ -38,6 +39,8 @@ const PORT = process.env.PORT || 5000;
 // ========================
 // MIDDLEWARE
 // ========================
+// Mount before express.json so TextBee's signature can be checked against raw bytes.
+app.use("/api/textbee", textbeeRoutes);
 app.use(express.json());
 
 app.use(
