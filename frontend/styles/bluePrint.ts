@@ -189,6 +189,20 @@ const styles = StyleSheet.create({
   trMark: { top: 8, right: 8 },
   blMark: { bottom: 8, left: 8 },
   brMark: { bottom: 8, right: 8 },
+  northMarker: {
+    position: 'absolute',
+    top: 14,
+    left: 16,
+    zIndex: 12,
+    alignItems: 'center',
+    gap: 2,
+  },
+  northLetter: {
+    color: '#00ffff',
+    fontSize: 9,
+    fontWeight: '900',
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  },
 
   interiorGridRow: {
     flex: 3.8,
@@ -211,6 +225,7 @@ const styles = StyleSheet.create({
   },
   firstFloorRoom: {
     flex: 1,
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 10,
@@ -218,6 +233,7 @@ const styles = StyleSheet.create({
   },
   exteriorRowContainer: {
     flex: 1.2,
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 12,
@@ -227,8 +243,28 @@ const styles = StyleSheet.create({
     borderRightWidth: 3,
     borderRightColor: '#00ffff',
   },
+  doorSymbol: {
+    position: 'absolute',
+    zIndex: 10,
+    top: 14,
+    width: 42,
+    height: 42,
+  },
+  doorAtRight: { right: -4 },
+  doorAtLeft: { left: -4, transform: [{ scaleX: -1 }] },
+  windowSymbol: {
+    position: 'absolute',
+    zIndex: 9,
+    top: '50%',
+    marginTop: -26,
+    width: 28,
+    height: 52,
+  },
+  windowAtLeft: { left: -14 },
+  windowAtRight: { right: -14 },
   roomContainer: {
     flex: 1,
+    position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 10,
@@ -305,6 +341,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     width: 150,
     borderRadius: 2,
+  },
+  scaleLegend: {
+    position: 'absolute',
+    bottom: 9,
+    left: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    borderWidth: 1,
+    borderColor: '#00ffff55',
+    backgroundColor: '#001b33dd',
+    borderRadius: 2,
+  },
+  scaleLegendText: {
+    color: '#00a3a3',
+    fontSize: 7,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   titleBlockBoldText: {
     color: '#00ffff',

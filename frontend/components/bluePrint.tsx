@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
 import { useVoiceCommand } from '@/hooks/useVoiceCommand';
 import { BASE_URL } from '../utils/api';
 import { Storage } from '../utils/storage';
@@ -18,6 +19,27 @@ const DraftCrosshair = ({ style }: { style: any }) => (
   <View style={[styles.crosshairContainer, style]}>
     <View style={styles.crosshairHorizontal} />
     <View style={styles.crosshairVertical} />
+  </View>
+);
+
+const DoorSymbol = ({ style }: { style: any }) => (
+  <View pointerEvents="none" style={[styles.doorSymbol, style]}>
+    <Svg width={42} height={42} viewBox="0 0 42 42">
+      <Path d="M4 4 A34 34 0 0 1 38 38" fill="none" stroke="#00ffff" strokeWidth={1.5} />
+      <Path d="M38 4 V38" fill="none" stroke="#002240" strokeWidth={5} />
+      <Path d="M38 4 H4" fill="none" stroke="#b9ffff" strokeWidth={2} />
+      <Path d="M34 38 H42" fill="none" stroke="#00ffff" strokeWidth={1.5} />
+    </Svg>
+  </View>
+);
+
+const WindowSymbol = ({ style }: { style: any }) => (
+  <View pointerEvents="none" style={[styles.windowSymbol, style]}>
+    <Svg width={28} height={52} viewBox="0 0 28 52">
+      <Path d="M14 0 V52" fill="none" stroke="#002240" strokeWidth={7} />
+      <Path d="M9 3 V49 M19 3 V49" fill="none" stroke="#b9ffff" strokeWidth={1.5} />
+      <Path d="M5 3 H23 M5 49 H23" fill="none" stroke="#00ffff" strokeWidth={1} />
+    </Svg>
   </View>
 );
 
@@ -204,6 +226,10 @@ function BluePrint() {
             <DraftCrosshair style={styles.trMark} />
             <DraftCrosshair style={styles.blMark} />
             <DraftCrosshair style={styles.brMark} />
+            <View style={styles.northMarker} pointerEvents="none">
+              <Text style={styles.northLetter}>N</Text>
+              <Ionicons name="navigate" size={18} color="#00ffff" />
+            </View>
 
             {/* DYNAMIC BLUEPRINT CONDITIONAL VIEWPORTS */}
             {activeFloor === 1 ? (
@@ -212,6 +238,8 @@ function BluePrint() {
                 <View style={styles.firstFloorRoomStack}>
                   {/* LIVING ROOM */}
                   <View style={[styles.firstFloorRoom, styles.borderRight, relay1 && styles.roomActive]}>
+                    <DoorSymbol style={styles.doorAtRight} />
+                    <WindowSymbol style={styles.windowAtLeft} />
                     <Text style={[styles.roomLabel, relay1 && styles.textCyan]}>LIVING AREA</Text>
                     <Text style={styles.dimensionText}>4.50m x 4.00m</Text>
                     <TouchableOpacity
@@ -226,6 +254,7 @@ function BluePrint() {
 
                   {/* KITCHEN / DINING */}
                   <View style={[styles.firstFloorRoom, relay2 && styles.roomActive]}>
+                    <WindowSymbol style={styles.windowAtRight} />
                     <Text style={[styles.roomLabel, relay2 && styles.textCyan]}>KITCHEN / DINING</Text>
                     <Text style={styles.dimensionText}>3.20m x 4.00m</Text>
                     <TouchableOpacity
@@ -253,6 +282,8 @@ function BluePrint() {
                 <View style={[styles.interiorGridRow, styles.secondFloorInteriorGrid]}>
                   {/* MASTER BEDROOM */}
                   <View style={[styles.roomContainer, styles.borderRight, relay3 && styles.roomActive]}>
+                    <DoorSymbol style={styles.doorAtRight} />
+                    <WindowSymbol style={styles.windowAtLeft} />
                     <Text style={[styles.roomLabel, relay3 && styles.textCyan]}>MASTER BEDROOM</Text>
                     <Text style={styles.dimensionText}>5.10m x 3.80m</Text>
                     <TouchableOpacity
@@ -267,7 +298,8 @@ function BluePrint() {
 
                   {/* MEDIA ROOM */}
                   <View style={[styles.roomContainer, relay4 && styles.roomActive]}>
-                    <Text style={[styles.roomLabel, relay4 && styles.textCyan]}>MEDIA ROOM</Text>
+                    <WindowSymbol style={styles.windowAtRight} />
+                    <Text style={[styles.roomLabel, relay4 && styles.textCyan]}>GARAGE</Text>
                     <Text style={styles.dimensionText}>2.10m x 2.20m</Text>
                     <TouchableOpacity
                       style={[styles.powerBtn, relay4 && styles.powerBtnActive]}
@@ -282,6 +314,8 @@ function BluePrint() {
 
                 {/* HOME OFFICE */}
                 <View style={[styles.exteriorRowContainer, styles.secondFloorExterior, relay5 && styles.roomActive]}>
+                  <DoorSymbol style={styles.doorAtLeft} />
+                  <WindowSymbol style={styles.windowAtRight} />
                   <View style={styles.exteriorMetaContainer}>
                     <Text style={[styles.roomLabel, relay5 && styles.textCyan]}>HOME OFFICE</Text>
                     <Text style={styles.dimensionText}>7.70m x 1.50m</Text>
@@ -303,6 +337,9 @@ function BluePrint() {
               <Text style={styles.titleBlockText}>SHEET: {activeFloor === 1 ? "1ST FLOOR PLAN" : "2ND FLOOR PLAN"}</Text>
               <Text style={styles.titleBlockText}>SCALE: 1:50 METRIC</Text>
               <Text style={styles.titleBlockText}>DWG NO: VG-A02_REV1</Text>
+            </View>
+            <View style={styles.scaleLegend} pointerEvents="none">
+              <Text style={styles.scaleLegendText}>KEY  ⌒ DOOR  ║ WINDOW</Text>
             </View>
 
           </View>
