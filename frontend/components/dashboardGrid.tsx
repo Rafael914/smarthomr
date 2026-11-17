@@ -65,7 +65,7 @@ const normalizePzemReading = (reading: Partial<PzemReading>): PzemReading => ({
   pf: Number.isFinite(Number(reading.pf)) ? Number(reading.pf) : 0,
 });
 
-const ELECTRICAL_STANDARD = {
+const DEFAULT_ELECTRICAL_STANDARD = {
   minVoltage: 207,
   maxVoltage: 253,
   minFrequency: 59,
@@ -87,6 +87,30 @@ export default function DashboardGrid() {
   const [pzemError, setPzemError] = useState(false);
   const [ratePerKwh, setRatePerKwh] = useState("");
   const [budgetSaving, setBudgetSaving] = useState(false);
+  const [electricalStandard, setElectricalStandard] = useState(DEFAULT_ELECTRICAL_STANDARD);
+  const [standardDraft, setStandardDraft] = useState({
+    minVoltage: String(DEFAULT_ELECTRICAL_STANDARD.minVoltage),
+    maxVoltage: String(DEFAULT_ELECTRICAL_STANDARD.maxVoltage),
+    minFrequency: String(DEFAULT_ELECTRICAL_STANDARD.minFrequency),
+    maxFrequency: String(DEFAULT_ELECTRICAL_STANDARD.maxFrequency),
+    minPowerFactor: String(DEFAULT_ELECTRICAL_STANDARD.minPowerFactor),
+    maxCurrent: String(DEFAULT_ELECTRICAL_STANDARD.maxCurrent),
+  });
+  const [standardSaving, setStandardSaving] = useState(false);
+
+  useEffect(() => {
+    Storage.getItem("electricalStandard").then((saved) => {
+      if (!saved) return;
+      try {
+        const parsed = JSON.parse(saved);
+        const values = { ...DEFAULT_ELECTRICAL_STANDARD, ...parsed };
+        if (Object.values(values).every((value) => Number.isFinite(value) && value >= 0)) {
+          setElectricalStandard(values);
+          setStandardDraft(Object.fromEntries(Object.entries(values).map(([key, value]) => [key, String(value)])) as typeof standardDraft);
+        }
+      } catch { /* Ignore invalid saved settings and keep defaults. */ }
+    });
+  }, []);
 
   const loadPzem = async () => {
     const data = await fetchPzem();
@@ -285,6 +309,27 @@ export default function DashboardGrid() {
     }
   };
 
+  const saveElectricalStandard = async () => {
+    const values = Object.fromEntries(Object.entries(standardDraft).map(([key, value]) => [key, Number(value)])) as typeof DEFAULT_ELECTRICAL_STANDARD;
+    const valid = Object.values(standardDraft).every((value) => value.trim() !== "" && Number.isFinite(Number(value)) && Number(value) >= 0)
+      && values.minVoltage < values.maxVoltage
+      && values.minFrequency < values.maxFrequency
+      && values.minPowerFactor <= 1;
+    if (!valid) {
+      const message = "Enter valid non-negative thresholds. Minimum voltage and frequency must be below their maximums, and power factor must be 0–1.";
+      if (Platform.OS === "web") alert(message);
+      else Alert.alert("Invalid electrical standard", message);
+      return;
+    }
+    setStandardSaving(true);
+    try {
+      await Storage.setItem("electricalStandard", JSON.stringify(values));
+      setElectricalStandard(values);
+    } finally {
+      setStandardSaving(false);
+    }
+  };
+
   const mainReading = !pzemError ? pzemReadings[0] : undefined;
   const totalPower = Number(mainReading?.power) || 0;
   const totalEnergy = Number(mainReading?.energy) || 0;
@@ -294,12 +339,12 @@ export default function DashboardGrid() {
   const frequency = Number(mainReading?.frequency) || 0;
   const powerFactor = Number(mainReading?.pf) || 0;
   const standardAlerts = [
-    voltage > 0 && voltage < ELECTRICAL_STANDARD.minVoltage ? "Undervoltage" : "",
-    voltage > ELECTRICAL_STANDARD.maxVoltage ? "Overvoltage" : "",
-    frequency > 0 && frequency < ELECTRICAL_STANDARD.minFrequency ? "Low frequency" : "",
-    frequency > ELECTRICAL_STANDARD.maxFrequency ? "High frequency" : "",
-    powerFactor > 0 && powerFactor < ELECTRICAL_STANDARD.minPowerFactor ? "Low power factor" : "",
-    current > ELECTRICAL_STANDARD.maxCurrent ? "Main breaker current exceeded" : "",
+    voltage > 0 && voltage < electricalStandard.minVoltage ? "Undervoltage" : "",
+    voltage > electricalStandard.maxVoltage ? "Overvoltage" : "",
+    frequency > 0 && frequency < electricalStandard.minFrequency ? "Low frequency" : "",
+    frequency > electricalStandard.maxFrequency ? "High frequency" : "",
+    powerFactor > 0 && powerFactor < electricalStandard.minPowerFactor ? "Low power factor" : "",
+    current > electricalStandard.maxCurrent ? "Main breaker current exceeded" : "",
   ].filter(Boolean);
   const standardAlertKey = standardAlerts.join("|");
   const [lastAlertKey, setLastAlertKey] = useState("");
@@ -473,11 +518,36 @@ export default function DashboardGrid() {
             </View>
           </View>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 }}>
-            <Text style={{ color: "#cbd5e1", fontSize: 12 }}>Voltage: 207–253 V</Text>
-            <Text style={{ color: "#cbd5e1", fontSize: 12 }}>Frequency: 59–61 Hz</Text>
-            <Text style={{ color: "#cbd5e1", fontSize: 12 }}>Power factor: ≥ 0.80</Text>
-            <Text style={{ color: "#cbd5e1", fontSize: 12 }}>Current: ≤ 50 A</Text>
+            <Text style={{ color: "#cbd5e1", fontSize: 12 }}>Voltage: {electricalStandard.minVoltage}–{electricalStandard.maxVoltage} V</Text>
+            <Text style={{ color: "#cbd5e1", fontSize: 12 }}>Frequency: {electricalStandard.minFrequency}–{electricalStandard.maxFrequency} Hz</Text>
+            <Text style={{ color: "#cbd5e1", fontSize: 12 }}>Power factor: ≥ {electricalStandard.minPowerFactor.toFixed(2)}</Text>
+            <Text style={{ color: "#cbd5e1", fontSize: 12 }}>Current: ≤ {electricalStandard.maxCurrent} A</Text>
           </View>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 14 }}>
+            {([
+              ["minVoltage", "Minimum voltage (V)"], ["maxVoltage", "Maximum voltage (V)"],
+              ["minFrequency", "Minimum frequency (Hz)"], ["maxFrequency", "Maximum frequency (Hz)"],
+              ["minPowerFactor", "Minimum power factor (0–1)"], ["maxCurrent", "Maximum current (A)"],
+            ] as const).map(([key, label]) => (
+              <View key={key} style={{ flexGrow: 1, flexBasis: 150 }}>
+                <Text style={{ color: "#cbd5e1", fontSize: 12, marginBottom: 5 }}>{label}</Text>
+                <TextInput
+                  value={standardDraft[key]}
+                  onChangeText={(value) => setStandardDraft((draft) => ({ ...draft, [key]: value }))}
+                  keyboardType="decimal-pad"
+                  placeholderTextColor="#6b7280"
+                  style={{ backgroundColor: "#1f2937", color: "#fff", borderRadius: 8, padding: 9, borderWidth: 1, borderColor: "#374151" }}
+                />
+              </View>
+            ))}
+          </View>
+          <TouchableOpacity
+            onPress={saveElectricalStandard}
+            disabled={standardSaving}
+            style={{ alignSelf: "flex-start", marginTop: 12, paddingVertical: 9, paddingHorizontal: 14, borderRadius: 8, backgroundColor: "#2563eb", opacity: standardSaving ? 0.65 : 1 }}
+          >
+            <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>{standardSaving ? "Saving..." : "Save electrical limits"}</Text>
+          </TouchableOpacity>
           {Platform.OS === "web" && webNotificationPermission !== "granted" ? (
             <TouchableOpacity
               onPress={enableWebNotifications}
