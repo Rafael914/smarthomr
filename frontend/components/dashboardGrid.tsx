@@ -25,7 +25,7 @@ const RELAY_CONFIG = [
   { id: "relay1", label: "Living Area", icon: "home-outline" },
   { id: "relay2", label: "Kitchen", icon: "restaurant-outline" },
   { id: "relay3", label: "Bedroom", icon: "bed-outline" },
-  { id: "relay4", label: "MEDIA ROOM", icon: "tv-outline" },
+  { id: "relay4", label: "Garage", icon: "tv-outline" },
   { id: "relay5", label: "Home Office", icon: "desktop-outline" },
 ] satisfies Array<{ id: string; label: string; icon: IconName }>;
 

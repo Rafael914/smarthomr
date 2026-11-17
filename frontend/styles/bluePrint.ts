@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
   },
   houseFrame: {
     width: '100%',
-    aspectRatio: 0.75,
+    aspectRatio: 1,
     backgroundColor: '#002240',
     borderWidth: 2,
     borderColor: '#00ffff',

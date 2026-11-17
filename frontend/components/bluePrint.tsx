@@ -239,7 +239,7 @@ function BluePrint() {
                   </View>
                 </View>
 
-                /* GROUND ENTRY / PORCH BASE */
+                <Text style={{ color: "#ffffff" }}>* GROUND ENTRY / PORCH BASE *</Text>
                 <View style={styles.exteriorRowContainer}>
                   <View style={styles.exteriorMetaContainer}>
                     <Text style={styles.roomLabel}>GROUND FLOOR MAIN ENTRY</Text>
