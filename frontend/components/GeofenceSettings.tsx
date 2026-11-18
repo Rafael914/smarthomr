@@ -115,7 +115,7 @@ export const GeofenceSettings: React.FC = () => {
         setCurrentLocation(location);
 
         const { home_latitude, home_longitude } = settingsRef.current;
-        if (home_latitude && home_longitude) {
+        if (home_latitude != null && home_longitude != null) {
           const dist = calculateDistance(
             home_latitude,
             home_longitude,
@@ -134,7 +134,7 @@ export const GeofenceSettings: React.FC = () => {
   // ─── Auto-poll while home location is set 
 
   useEffect(() => {
-    if (!settings.home_latitude || !settings.home_longitude) {
+    if (settings.home_latitude == null || settings.home_longitude == null) {
       // Clear distance display when home is removed
       setDistance(null);
       return;
@@ -192,7 +192,7 @@ export const GeofenceSettings: React.FC = () => {
   // ─── Toggle geofence ─────────────────────────────────────────────────────────
 
   const handleToggleGeofence = async (value: boolean) => {
-    if (value && (!settings.home_latitude || !settings.home_longitude)) {
+    if (value && (settings.home_latitude == null || settings.home_longitude == null)) {
       Alert.alert(
         "Home Location Not Set",
         "Please set your home location first before enabling geofence.",
@@ -208,10 +208,15 @@ export const GeofenceSettings: React.FC = () => {
         setSettings((prev) => ({ ...prev, geofence_enabled: value }));
         Alert.alert("Success", `Geofence ${value ? "enabled" : "disabled"}!`);
       } else {
-        Alert.alert("Error", "Failed to toggle geofence");
+        Alert.alert(
+          value ? "Location permission required" : "Error",
+          value
+            ? "Allow background or Always location access so SmartHome can monitor when you leave home."
+            : "Could not disable geofence. Check your network connection and try again.",
+        );
       }
     } catch {
-      Alert.alert("Error", "Failed to toggle geofence");
+      Alert.alert("Error", "Could not enable geofence. Check location permission and network connection.");
     } finally {
       setLoadingToggle(false);
     }
@@ -300,7 +305,7 @@ export const GeofenceSettings: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Home Location</Text>
           <View style={styles.locationBox}>
-            {settings.home_latitude && settings.home_longitude ? (
+            {settings.home_latitude != null && settings.home_longitude != null ? (
               <Text style={styles.locationText}>
                 SET -{" "}
                 {Number(settings.home_latitude).toFixed(6)},{" "}
@@ -327,7 +332,7 @@ export const GeofenceSettings: React.FC = () => {
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Current Location</Text>
-            {settings.home_latitude && settings.home_longitude && (
+            {settings.home_latitude != null && settings.home_longitude != null && (
               <Text style={styles.autoUpdateBadge}>AUTO-UPDATING</Text>
             )}
           </View>
@@ -444,8 +449,9 @@ export const GeofenceSettings: React.FC = () => {
           <Text style={styles.infoText}>
             When geofence is enabled and you move{" "}
             {settings.radius_meters}+ meters away from your home location, all
-            relays will automatically turn OFF for safety. Location refreshes
-            every {POLL_INTERVAL_MS / 1000}s automatically.
+            relays will automatically turn OFF. On web, keep this app open; it
+            checks your location every {POLL_INTERVAL_MS / 1000} seconds. Closing
+            the browser tab stops location tracking.
           </Text>
         </View>
       </View>

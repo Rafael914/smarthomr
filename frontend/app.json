@@ -38,6 +38,16 @@
           "backgroundColor": "#ffffff"
         }
       ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow SmartHome to use your location to check whether you are near home.",
+          "locationAlwaysAndWhenInUsePermission": "Allow SmartHome to use your location in the background so it can turn relays off when you leave home.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
       "expo-secure-store",
       "expo-web-browser",
       "expo-font",

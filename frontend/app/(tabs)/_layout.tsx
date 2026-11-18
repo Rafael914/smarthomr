@@ -5,6 +5,7 @@ import { Platform, useWindowDimensions } from 'react-native';
 import { Storage } from '@/utils/storage';
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
+import { GeofenceWebBootstrap } from '@/components/GeofenceWebBootstrap';
 
 export default function TabLayout() {
   const { width } = useWindowDimensions();
@@ -23,6 +24,8 @@ export default function TabLayout() {
   }, []);
   if (checkingAuth) return null;
   return (
+    <>
+    {isAdmin && <GeofenceWebBootstrap />}
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -69,5 +72,6 @@ export default function TabLayout() {
       <Tabs.Screen name="register" options={{ title: 'Register', href: isAdmin ? undefined : null, tabBarIcon: ({ color, size }) => <Ionicons name="person-add-outline" color={color} size={size} /> }} />
       <Tabs.Screen name="logout" options={{ title: 'Log out', tabBarItemStyle: compactWebTabs ? undefined : { flexGrow: 0, flexShrink: 0, flexBasis: 132, marginEnd: 'auto' }, tabBarIcon: ({ color, size }) => <Ionicons name="log-out-outline" color={color} size={size} /> }} />
     </Tabs>
+    </>
   );
 }

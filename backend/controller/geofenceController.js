@@ -168,7 +168,7 @@ export const checkGeofenceDistance = async (req, res) => {
 
     const { home_latitude, home_longitude, radius_meters } = settings[0];
 
-    if (!home_latitude || !home_longitude) {
+    if (home_latitude == null || home_longitude == null) {
       return res.status(200).json({
         geofenceEnabled: true,
         shouldDisableRelays: false,

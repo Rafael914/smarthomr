@@ -2,12 +2,14 @@
 import { useEffect, useRef, useCallback } from "react";
 import { Platform } from "react-native";
 import * as Location from "expo-location";
-import * as TaskManager from "expo-task-manager";
 import axios from "axios";
 import { Storage } from "../utils/storage";
 import { BASE_URL } from "../utils/api";
+import { GEOFENCE_TASK } from "../tasks/geofenceTask";
+import { checkLocationAndDisableRelays } from "../utils/geofenceEnforcement";
 
-const GEOFENCE_TASK = "geofenceTask";
+let activeWebWatchId: number | null = null;
+let activeWebPollTimer: ReturnType<typeof setInterval> | null = null;
 
 
 const normalizeRelayKey = (input: string | number): string | null => {
@@ -40,91 +42,12 @@ const normalizeRelayKey = (input: string | number): string | null => {
   return detectedDigit ? `relay${detectedDigit}` : null;
 };
 
-// Define the background task
-TaskManager.defineTask(GEOFENCE_TASK, async () => {
-  try {
-    const location = await Location.getCurrentPositionAsync({});
-    const token = await Storage.getItem("token");
-    const userId = await Storage.getItem("userId");
-
-    if (!token || !userId) return;
-
-    // Check geofence distance
-    const response = await axios.post(
-      `${BASE_URL}/api/geofence/check-distance`,
-      {
-        userId: parseInt(userId),
-        currentLatitude: location.coords.latitude,
-        currentLongitude: location.coords.longitude,
-      },
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
-    );
-
-    // If too far from home, disable all relays
-    if (response.data.shouldDisableRelays) {
-      await axios.post(
-        `${BASE_URL}/api/relay`,
-        {
-          relay1: false,
-          relay2: false,
-          relay3: false,
-          relay4: false,
-          relay5: false,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      console.log("🚨 Geofence triggered: All relays disabled");
-    }
-  } catch (error) {
-    console.error("Geofence task error:", error);
-  }
-});
-
 export const useGeofence = () => {
   const geofenceEnabledRef = useRef(false);
-  const webWatchIdRef = useRef<number | null>(null);
 
   const checkDistanceAndDisableRelays = useCallback(
     async (latitude: number, longitude: number) => {
-      const token = await Storage.getItem("token");
-      const userId = await Storage.getItem("userId");
-
-      if (!token || !userId) return;
-
-      const response = await axios.post(
-        `${BASE_URL}/api/geofence/check-distance`,
-        {
-          userId: parseInt(userId),
-          currentLatitude: latitude,
-          currentLongitude: longitude,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.data.shouldDisableRelays) {
-        await axios.post(
-          `${BASE_URL}/api/relay`,
-          {
-            relay1: false,
-            relay2: false,
-            relay3: false,
-            relay4: false,
-            relay5: false,
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
-        console.log("Geofence triggered: All relays disabled");
-      }
+      await checkLocationAndDisableRelays(latitude, longitude);
     },
     []
   );
@@ -136,15 +59,6 @@ export const useGeofence = () => {
       if (foregroundStatus.status !== "granted") {
         console.warn("Foreground location permission denied");
         return false;
-      }
-
-      try {
-        const backgroundStatus = await Location.requestBackgroundPermissionsAsync();
-        if (backgroundStatus.status !== "granted") {
-          console.warn("Background location permission not granted - app will only track when in foreground");
-        }
-      } catch (error) {
-        console.warn("Background location permissions not available:", error);
       }
 
       return true;
@@ -165,9 +79,18 @@ export const useGeofence = () => {
           return false;
         }
 
-        if (webWatchIdRef.current !== null) {
-          webNavigator.geolocation.clearWatch(webWatchIdRef.current);
+        await new Promise<void>((resolve, reject) => {
+          webNavigator.geolocation.getCurrentPosition(
+            () => resolve(),
+            (error: GeolocationPositionError) => reject(error),
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 },
+          );
+        });
+
+        if (activeWebWatchId !== null) {
+          webNavigator.geolocation.clearWatch(activeWebWatchId);
         }
+        if (activeWebPollTimer !== null) clearInterval(activeWebPollTimer);
 
         const options = {
           enableHighAccuracy: true,
@@ -175,18 +98,30 @@ export const useGeofence = () => {
           timeout: 20000,
         };
 
-        webWatchIdRef.current = webNavigator.geolocation.watchPosition(
+        activeWebWatchId = webNavigator.geolocation.watchPosition(
           (position: GeolocationPosition) => {
-            checkDistanceAndDisableRelays(
+            void checkDistanceAndDisableRelays(
               position.coords.latitude,
               position.coords.longitude
-            );
+            ).catch((error) => console.error("Geofence location check failed:", error));
           },
           (error: GeolocationPositionError) => {
             console.warn("Web geofence location error:", error.message);
           },
           options
         );
+        activeWebPollTimer = setInterval(() => {
+          webNavigator.geolocation.getCurrentPosition(
+            (position: GeolocationPosition) => {
+              void checkDistanceAndDisableRelays(
+                position.coords.latitude,
+                position.coords.longitude,
+              ).catch((error) => console.error("Geofence location check failed:", error));
+            },
+            (error: GeolocationPositionError) => console.warn("Geofence poll failed:", error.message),
+            options,
+          );
+        }, 10000);
 
         geofenceEnabledRef.current = true;
         console.log("Web geofence tracking started");
@@ -196,21 +131,22 @@ export const useGeofence = () => {
       const hasPermission = await requestLocationPermission();
       if (!hasPermission) return false;
 
-      const isTaskDefined = TaskManager.isTaskDefined(GEOFENCE_TASK);
-      if (!isTaskDefined) {
-        console.warn("Geofence task not defined");
-        return false;
-      }
+      const backgroundStatus = await Location.requestBackgroundPermissionsAsync();
+      if (backgroundStatus.status !== "granted") return false;
 
-      await Location.startLocationUpdatesAsync(GEOFENCE_TASK, {
-        accuracy: Location.Accuracy.Balanced,
-        timeInterval: 300000, // 5 minutes
-        distanceInterval: 50, // 50 meters
-        foregroundService: {
-          notificationTitle: "Location Tracking",
-          notificationBody: "Geofence is active",
-        },
-      });
+      if (!(await Location.hasStartedLocationUpdatesAsync(GEOFENCE_TASK))) {
+        await Location.startLocationUpdatesAsync(GEOFENCE_TASK, {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 15000,
+          distanceInterval: 15,
+          pausesUpdatesAutomatically: false,
+          showsBackgroundLocationIndicator: true,
+          foregroundService: {
+            notificationTitle: "Location Tracking",
+            notificationBody: "Geofence is active",
+          },
+        });
+      }
 
       geofenceEnabledRef.current = true;
       console.log("✅ Geofence tracking started");
@@ -227,9 +163,13 @@ export const useGeofence = () => {
       if (Platform.OS === "web") {
         const webNavigator = globalThis.navigator as any;
 
-        if (webWatchIdRef.current !== null) {
-          webNavigator?.geolocation?.clearWatch(webWatchIdRef.current);
-          webWatchIdRef.current = null;
+        if (activeWebWatchId !== null) {
+          webNavigator?.geolocation?.clearWatch(activeWebWatchId);
+          activeWebWatchId = null;
+        }
+        if (activeWebPollTimer !== null) {
+          clearInterval(activeWebPollTimer);
+          activeWebPollTimer = null;
         }
 
         geofenceEnabledRef.current = false;
@@ -237,7 +177,9 @@ export const useGeofence = () => {
         return true;
       }
 
-      await Location.stopLocationUpdatesAsync(GEOFENCE_TASK);
+      if (await Location.hasStartedLocationUpdatesAsync(GEOFENCE_TASK)) {
+        await Location.stopLocationUpdatesAsync(GEOFENCE_TASK);
+      }
       geofenceEnabledRef.current = false;
       console.log("⏹️ Geofence tracking stopped");
       return true;
@@ -342,31 +284,40 @@ export const useGeofence = () => {
 
         if (!userId || !token) return false;
 
-        await axios.post(
-          `${BASE_URL}/api/geofence/toggle`,
-          {
-            userId: parseInt(userId),
-            enabled: enabled,
-          },
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
         if (enabled) {
-          await startGeofenceTracking();
+          const trackingStarted = await startGeofenceTracking();
+          if (!trackingStarted) return false;
+
+          await axios.post(
+            `${BASE_URL}/api/geofence/toggle`,
+            { userId: Number.parseInt(userId, 10), enabled: true },
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+
+          try {
+            const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+            await checkDistanceAndDisableRelays(location.coords.latitude, location.coords.longitude);
+          } catch (locationError) {
+            console.warn("Initial geofence location check failed; background tracking remains active:", locationError);
+          }
         } else {
+          await axios.post(
+            `${BASE_URL}/api/geofence/toggle`,
+            { userId: Number.parseInt(userId, 10), enabled: false },
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
           await stopGeofenceTracking();
         }
 
         console.log(`Geofence ${enabled ? "enabled" : "disabled"}`);
         return true;
       } catch (error) {
+        if (enabled) await stopGeofenceTracking();
         console.error("Error toggling geofence:", error);
         return false;
       }
     },
-    [startGeofenceTracking, stopGeofenceTracking]
+    [checkDistanceAndDisableRelays, startGeofenceTracking, stopGeofenceTracking]
   );
 
   /**
