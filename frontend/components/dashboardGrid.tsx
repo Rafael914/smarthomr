@@ -22,8 +22,8 @@ import { Ionicons } from "@expo/vector-icons";
 type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
 const RELAY_CONFIG = [
-  { id: "relay1", label: "Living Area", icon: "home-outline" },
-  { id: "relay2", label: "Dining Area", icon: "restaurant-outline" },
+  { id: "relay1", label: "Dining Area", icon: "restaurant-outline" },
+  { id: "relay2", label: "Living Area", icon: "home-outline" },
   { id: "relay3", label: "Kitchen", icon: "restaurant-outline" },
   { id: "relay4", label: "Master Bedroom", icon: "bed-outline" },
   { id: "relay5", label: "Bathroom", icon: "water-outline" },

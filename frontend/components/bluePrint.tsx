@@ -47,8 +47,8 @@ function BluePrint() {
   const { isListening, startListening, stopListening } = useVoiceCommand();
   const [activeFloor, setActiveFloor] = useState<1 | 2>(1);
 
-  const [relay1, setRelay1] = useState(false); // 1st Fl: Living Area
-  const [relay2, setRelay2] = useState(false); // 1st Fl: Dining Area
+  const [relay1, setRelay1] = useState(false); // 1st Fl: Dining Area
+  const [relay2, setRelay2] = useState(false); // 1st Fl: Living Area
   const [relay3, setRelay3] = useState(false); // 1st Fl: Kitchen
   const [relay4, setRelay4] = useState(false); // 2nd Fl: Master Bedroom
   const [relay5, setRelay5] = useState(false); // 2nd Fl: Bathroom
@@ -237,26 +237,11 @@ function BluePrint() {
               <View style={styles.viewportContainer}>
                 <View style={styles.firstFloorRoomStack}>
                   {/* LIVING ROOM */}
-                  <View style={[styles.firstFloorRoom, styles.borderRight, relay1 && styles.roomActive]}>
+                  <View style={[styles.firstFloorRoom, styles.borderRight, relay2 && styles.roomActive]}>
                     <DoorSymbol style={styles.doorAtRight} />
                     <WindowSymbol style={styles.windowAtLeft} />
-                    <Text style={[styles.roomLabel, relay1 && styles.textCyan]}>LIVING AREA</Text>
+                    <Text style={[styles.roomLabel, relay2 && styles.textCyan]}>LIVING AREA</Text>
                     <Text style={styles.dimensionText}>4.50m x 4.00m</Text>
-                    <TouchableOpacity
-                      style={[styles.powerBtn, relay1 && styles.powerBtnActive]}
-                      onPress={() => toggleRelay("relay1", relay1, setRelay1)}
-                      activeOpacity={0.9}
-                    >
-                      <Ionicons name={relay1 ? "checkmark-circle" : "ellipse-outline"} size={24} color={relay1 ? "#00ffaa" : "#5c8090"} />
-                    </TouchableOpacity>
-                    <Text style={[styles.relayTag, relay1 && styles.relayTagActive]}>[CH_01_RLY]</Text>
-                  </View>
-
-                  {/* DINING AREA */}
-                  <View style={[styles.firstFloorRoom, relay2 && styles.roomActive]}>
-                    <WindowSymbol style={styles.windowAtRight} />
-                    <Text style={[styles.roomLabel, relay2 && styles.textCyan]}>DINING AREA</Text>
-                    <Text style={styles.dimensionText}>3.20m x 4.00m</Text>
                     <TouchableOpacity
                       style={[styles.powerBtn, relay2 && styles.powerBtnActive]}
                       onPress={() => toggleRelay("relay2", relay2, setRelay2)}
@@ -265,6 +250,21 @@ function BluePrint() {
                       <Ionicons name={relay2 ? "checkmark-circle" : "ellipse-outline"} size={24} color={relay2 ? "#00ffaa" : "#5c8090"} />
                     </TouchableOpacity>
                     <Text style={[styles.relayTag, relay2 && styles.relayTagActive]}>[CH_02_RLY]</Text>
+                  </View>
+
+                  {/* DINING AREA */}
+                  <View style={[styles.firstFloorRoom, relay1 && styles.roomActive]}>
+                    <WindowSymbol style={styles.windowAtRight} />
+                    <Text style={[styles.roomLabel, relay1 && styles.textCyan]}>DINING AREA</Text>
+                    <Text style={styles.dimensionText}>3.20m x 4.00m</Text>
+                    <TouchableOpacity
+                      style={[styles.powerBtn, relay1 && styles.powerBtnActive]}
+                      onPress={() => toggleRelay("relay1", relay1, setRelay1)}
+                      activeOpacity={0.9}
+                    >
+                      <Ionicons name={relay1 ? "checkmark-circle" : "ellipse-outline"} size={24} color={relay1 ? "#00ffaa" : "#5c8090"} />
+                    </TouchableOpacity>
+                    <Text style={[styles.relayTag, relay1 && styles.relayTagActive]}>[CH_01_RLY]</Text>
                   </View>
                   <View style={[styles.firstFloorRoom, styles.borderRight, relay3 && styles.roomActive]}>
                     <WindowSymbol style={styles.windowAtRight} />
