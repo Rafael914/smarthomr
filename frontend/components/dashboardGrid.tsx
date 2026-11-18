@@ -23,10 +23,10 @@ type IconName = React.ComponentProps<typeof Ionicons>["name"];
 
 const RELAY_CONFIG = [
   { id: "relay1", label: "Living Area", icon: "home-outline" },
-  { id: "relay2", label: "Kitchen", icon: "restaurant-outline" },
-  { id: "relay3", label: "Bedroom", icon: "bed-outline" },
-  { id: "relay4", label: "Garage", icon: "tv-outline" },
-  { id: "relay5", label: "Home Office", icon: "desktop-outline" },
+  { id: "relay2", label: "Dining Area", icon: "restaurant-outline" },
+  { id: "relay3", label: "Kitchen", icon: "restaurant-outline" },
+  { id: "relay4", label: "Master Bedroom", icon: "bed-outline" },
+  { id: "relay5", label: "Media Room", icon: "tv-outline" },
 ] satisfies Array<{ id: string; label: string; icon: IconName }>;
 
 type Schedule = {
@@ -102,7 +102,7 @@ export default function DashboardGrid() {
     Storage.getItem("electricalStandard").then((saved) => {
       if (!saved) return;
       try {
-        const parsed = JSON.parse(saved);
+        const parsed: Partial<typeof DEFAULT_ELECTRICAL_STANDARD> = JSON.parse(saved);
         const values = { ...DEFAULT_ELECTRICAL_STANDARD, ...parsed };
         if (Object.values(values).every((value) => Number.isFinite(value) && value >= 0)) {
           setElectricalStandard(values);

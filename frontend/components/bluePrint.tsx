@@ -48,10 +48,10 @@ function BluePrint() {
   const [activeFloor, setActiveFloor] = useState<1 | 2>(1);
 
   const [relay1, setRelay1] = useState(false); // 1st Fl: Living Area
-  const [relay2, setRelay2] = useState(false); // 1st Fl: Kitchen / Dining
-  const [relay3, setRelay3] = useState(false); // 2nd Fl: Master Bedroom
-  const [relay4, setRelay4] = useState(false); // 2nd Fl: Media Room
-  const [relay5, setRelay5] = useState(false); // 2nd Fl: Home Office
+  const [relay2, setRelay2] = useState(false); // 1st Fl: Dining Area
+  const [relay3, setRelay3] = useState(false); // 1st Fl: Kitchen
+  const [relay4, setRelay4] = useState(false); // 2nd Fl: Master Bedroom
+  const [relay5, setRelay5] = useState(false); // 2nd Fl: Media Room
 
   const fetchRelay = async () => {
     try {
@@ -252,10 +252,10 @@ function BluePrint() {
                     <Text style={[styles.relayTag, relay1 && styles.relayTagActive]}>[CH_01_RLY]</Text>
                   </View>
 
-                  {/* KITCHEN / DINING */}
+                  {/* DINING AREA */}
                   <View style={[styles.firstFloorRoom, relay2 && styles.roomActive]}>
                     <WindowSymbol style={styles.windowAtRight} />
-                    <Text style={[styles.roomLabel, relay2 && styles.textCyan]}>KITCHEN / DINING</Text>
+                    <Text style={[styles.roomLabel, relay2 && styles.textCyan]}>DINING AREA</Text>
                     <Text style={styles.dimensionText}>3.20m x 4.00m</Text>
                     <TouchableOpacity
                       style={[styles.powerBtn, relay2 && styles.powerBtnActive]}
@@ -265,6 +265,19 @@ function BluePrint() {
                       <Ionicons name={relay2 ? "checkmark-circle" : "ellipse-outline"} size={24} color={relay2 ? "#00ffaa" : "#5c8090"} />
                     </TouchableOpacity>
                     <Text style={[styles.relayTag, relay2 && styles.relayTagActive]}>[CH_02_RLY]</Text>
+                  </View>
+                  <View style={[styles.firstFloorRoom, styles.borderRight, relay3 && styles.roomActive]}>
+                    <WindowSymbol style={styles.windowAtRight} />
+                    <Text style={[styles.roomLabel, relay3 && styles.textCyan]}>KITCHEN</Text>
+                    <Text style={styles.dimensionText}>3.20m x 4.00m</Text>
+                    <TouchableOpacity
+                      style={[styles.powerBtn, relay3 && styles.powerBtnActive]}
+                      onPress={() => toggleRelay("relay3", relay3, setRelay3)}
+                      activeOpacity={0.9}
+                    >
+                      <Ionicons name={relay3 ? "checkmark-circle" : "ellipse-outline"} size={24} color={relay3 ? "#00ffaa" : "#5c8090"} />
+                    </TouchableOpacity>
+                    <Text style={[styles.relayTag, relay3 && styles.relayTagActive]}>[CH_03_RLY]</Text>
                   </View>
                 </View>
 
@@ -281,26 +294,11 @@ function BluePrint() {
               <View style={[styles.viewportContainer, styles.secondFloorViewport]}>
                 <View style={[styles.interiorGridRow, styles.secondFloorInteriorGrid]}>
                   {/* MASTER BEDROOM */}
-                  <View style={[styles.roomContainer, styles.borderRight, relay3 && styles.roomActive]}>
+                  <View style={[styles.roomContainer, styles.borderRight, relay4 && styles.roomActive]}>
                     <DoorSymbol style={styles.doorAtRight} />
                     <WindowSymbol style={styles.windowAtLeft} />
-                    <Text style={[styles.roomLabel, relay3 && styles.textCyan]}>MASTER BEDROOM</Text>
+                    <Text style={[styles.roomLabel, relay4 && styles.textCyan]}>MASTER BEDROOM</Text>
                     <Text style={styles.dimensionText}>5.10m x 3.80m</Text>
-                    <TouchableOpacity
-                      style={[styles.powerBtn, relay3 && styles.powerBtnActive]}
-                      onPress={() => toggleRelay("relay3", relay3, setRelay3)}
-                      activeOpacity={0.9}
-                    >
-                      <Ionicons name={relay3 ? "checkmark-circle" : "ellipse-outline"} size={24} color={relay3 ? "#00ffaa" : "#5c8090"} />
-                    </TouchableOpacity>
-                    <Text style={[styles.relayTag, relay3 && styles.relayTagActive]}>[CH_03_RLY]</Text>
-                  </View>
-
-                  {/* MEDIA ROOM */}
-                  <View style={[styles.roomContainer, relay4 && styles.roomActive]}>
-                    <WindowSymbol style={styles.windowAtRight} />
-                    <Text style={[styles.roomLabel, relay4 && styles.textCyan]}>GARAGE</Text>
-                    <Text style={styles.dimensionText}>2.10m x 2.20m</Text>
                     <TouchableOpacity
                       style={[styles.powerBtn, relay4 && styles.powerBtnActive]}
                       onPress={() => toggleRelay("relay4", relay4, setRelay4)}
@@ -310,25 +308,23 @@ function BluePrint() {
                     </TouchableOpacity>
                     <Text style={[styles.relayTag, relay4 && styles.relayTagActive]}>[CH_04_RLY]</Text>
                   </View>
+
+                  {/* MEDIA ROOM */}
+                  <View style={[styles.roomContainer, relay5 && styles.roomActive]}>
+                    <WindowSymbol style={styles.windowAtRight} />
+                    <Text style={[styles.roomLabel, relay5 && styles.textCyan]}>MEDIA ROOM</Text>
+                    <Text style={styles.dimensionText}>2.10m x 2.20m</Text>
+                    <TouchableOpacity
+                      style={[styles.powerBtn, relay5 && styles.powerBtnActive]}
+                      onPress={() => toggleRelay("relay5", relay5, setRelay5)}
+                      activeOpacity={0.9}
+                    >
+                      <Ionicons name={relay5 ? "checkmark-circle" : "ellipse-outline"} size={24} color={relay5 ? "#00ffaa" : "#5c8090"} />
+                    </TouchableOpacity>
+                    <Text style={[styles.relayTag, relay5 && styles.relayTagActive]}>[CH_05_RLY]</Text>
+                  </View>
                 </View>
 
-                {/* HOME OFFICE */}
-                <View style={[styles.exteriorRowContainer, styles.secondFloorExterior, relay5 && styles.roomActive]}>
-                  <DoorSymbol style={styles.doorAtLeft} />
-                  <WindowSymbol style={styles.windowAtRight} />
-                  <View style={styles.exteriorMetaContainer}>
-                    <Text style={[styles.roomLabel, relay5 && styles.textCyan]}>HOME OFFICE</Text>
-                    <Text style={styles.dimensionText}>7.70m x 1.50m</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[styles.powerBtn, relay5 && styles.powerBtnActive]}
-                    onPress={() => toggleRelay("relay5", relay5, setRelay5)}
-                    activeOpacity={0.9}
-                  >
-                    <Ionicons name={relay5 ? "checkmark-circle" : "ellipse-outline"} size={24} color={relay5 ? "#00ffaa" : "#5c8090"} />
-                  </TouchableOpacity>
-                  <Text style={[styles.relayTag, relay5 && styles.relayTagActive]}>[CH_05_RLY]</Text>
-                </View>
               </View>
             )}
 

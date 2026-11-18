@@ -1,15 +1,16 @@
 #include <WiFi.h>
-#include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <PZEM004Tv30.h>
+#include <time.h>
 
 const char* ssid = "RAFAEL6877";
 const char* password = "123456789";
 
-const char* relayURL = "http://10.118.174.173:5000/api/relay";
-const char* pzemURL = "http://10.118.174.173:5000/api/pzem";
+const char* relayURL = "https://smarthomr-production-8872c1b5.up.railway.app/api/relay";
+const char* pzemURL = "https://smarthomr-production-8872c1b5.up.railway.app/api/pzem";
 
-WiFiClient wifiClient;
+WiFiClientSecure wifiClient;
 
 // The main-breaker PZEM uses Modbus address 0x01.
 constexpr int PZEM1_RX_PIN = 16;
@@ -113,6 +114,21 @@ void connectWiFi() {
     Serial.println("[WIFI] CONNECTION SUCCESSFUL!");
     Serial.print("[WIFI] ESP32 IP: ");
     Serial.println(WiFi.localIP());
+
+    // Certificate validation requires the ESP32 clock to be set.
+    configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+    Serial.print("[TIME] Synchronizing clock");
+    const unsigned long syncStarted = millis();
+    while (time(nullptr) < 1700000000 && millis() - syncStarted < 15000) {
+      delay(250);
+      Serial.print(".");
+    }
+    Serial.println();
+    if (time(nullptr) < 1700000000) {
+      Serial.println("[TIME] Clock sync failed; HTTPS certificate checks may fail.");
+    } else {
+      Serial.println("[TIME] Clock synchronized.");
+    }
   } else {
     wasConnected = false;
     Serial.println();
@@ -207,6 +223,9 @@ void getRelayCommands() {
 void setup() {
   Serial.begin(115200);
   delay(1000);
+
+  // Validate Railway's HTTPS certificate against the ESP32 CA bundle.
+  wifiClient.useBuiltinCACertBundle();
 
   Serial.println("================================");
   Serial.println("       VOLTGUARD SMART HUB");
