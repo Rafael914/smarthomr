@@ -26,7 +26,7 @@ const RELAY_CONFIG = [
   { id: "relay2", label: "Dining Area", icon: "restaurant-outline" },
   { id: "relay3", label: "Kitchen", icon: "restaurant-outline" },
   { id: "relay4", label: "Master Bedroom", icon: "bed-outline" },
-  { id: "relay5", label: "Media Room", icon: "tv-outline" },
+  { id: "relay5", label: "Bathroom", icon: "water-outline" },
 ] satisfies Array<{ id: string; label: string; icon: IconName }>;
 
 type Schedule = {
@@ -193,6 +193,12 @@ export default function DashboardGrid() {
 
   const toggleRelay = async (key: string, current: boolean) => {
     const nextState = !current;
+    if (nextState && standardAlerts.length > 0) {
+      const message = "Relays cannot be turned on while electrical readings are outside the configured limits.";
+      if (Platform.OS === "web") alert(message);
+      else Alert.alert("Electrical limit active", message);
+      return;
+    }
     setRelayStates((prev) => ({ ...prev, [key]: nextState }));
     try {
       const token = await Storage.getItem("token");
@@ -223,7 +229,7 @@ export default function DashboardGrid() {
       const sched = schedules[key];
       if (!sched.enabled) return;
 
-      if (sched.onTime && currentTime === sched.onTime) {
+      if (sched.onTime && currentTime === sched.onTime && standardAlerts.length === 0) {
         Storage.getItem("token").then((token) => axios.post(`${BASE_URL}/api/relay`, { [key]: true }, { headers: { Authorization: `Bearer ${token}` } })).then(loadRelayStates);
       }
       if (sched.offTime && currentTime === sched.offTime) {
@@ -372,6 +378,24 @@ export default function DashboardGrid() {
   useEffect(() => {
     if (!standardAlertKey || standardAlertKey === lastAlertKey) return;
     setLastAlertKey(standardAlertKey);
+    setRelayStates({ relay1: false, relay2: false, relay3: false, relay4: false, relay5: false });
+    Storage.getItem("token")
+      .then((token) => {
+        if (!token) throw new Error("Your session has expired. Sign in again to control relays.");
+        return axios.post(
+          `${BASE_URL}/api/relay`,
+          { relay1: false, relay2: false, relay3: false, relay4: false, relay5: false },
+          { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 },
+        );
+      })
+      .then(loadRelayStates)
+      .catch((error: any) => {
+        console.error("Electrical limit relay shutdown failed:", error?.response?.data || error?.message);
+        void loadRelayStates();
+        const failureMessage = "Electrical readings exceeded the configured limits, but the relays could not be shut off. Check the connection and relay controller.";
+        if (Platform.OS === "web") alert(failureMessage);
+        else Alert.alert("Relay shutdown failed", failureMessage);
+      });
     const message = standardAlerts.join("\n");
     if (Platform.OS === "web") {
       if (webNotificationPermission === "granted" && typeof Notification !== "undefined") {
@@ -511,7 +535,7 @@ export default function DashboardGrid() {
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
             <View style={{ flex: 1, minWidth: 0, paddingRight: 8 }}>
               <Text style={{ color: "#fff", fontSize: 18, fontWeight: "700" }}>Electrical standard</Text>
-              <Text style={{ color: "#9ca3af", marginTop: 4, flexShrink: 1 }}>Automatic alerts for abnormal main-breaker readings</Text>
+              <Text style={{ color: "#9ca3af", marginTop: 4, flexShrink: 1 }}>All relays switch off when main-breaker readings exceed these limits</Text>
             </View>
             <View style={{ backgroundColor: standardAlerts.length ? "#991b1b" : "#166534", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, flexShrink: 0 }}>
               <Text style={{ color: "#fff", fontSize: 12, fontWeight: "700" }}>{standardAlerts.length ? "Warning" : "Normal"}</Text>

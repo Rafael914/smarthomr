@@ -51,7 +51,7 @@ function BluePrint() {
   const [relay2, setRelay2] = useState(false); // 1st Fl: Dining Area
   const [relay3, setRelay3] = useState(false); // 1st Fl: Kitchen
   const [relay4, setRelay4] = useState(false); // 2nd Fl: Master Bedroom
-  const [relay5, setRelay5] = useState(false); // 2nd Fl: Media Room
+  const [relay5, setRelay5] = useState(false); // 2nd Fl: Bathroom
 
   const fetchRelay = async () => {
     try {
@@ -309,10 +309,10 @@ function BluePrint() {
                     <Text style={[styles.relayTag, relay4 && styles.relayTagActive]}>[CH_04_RLY]</Text>
                   </View>
 
-                  {/* MEDIA ROOM */}
+                  {/* BATHROOM */}
                   <View style={[styles.roomContainer, relay5 && styles.roomActive]}>
                     <WindowSymbol style={styles.windowAtRight} />
-                    <Text style={[styles.roomLabel, relay5 && styles.textCyan]}>MEDIA ROOM</Text>
+                    <Text style={[styles.roomLabel, relay5 && styles.textCyan]}>BATHROOM</Text>
                     <Text style={styles.dimensionText}>2.10m x 2.20m</Text>
                     <TouchableOpacity
                       style={[styles.powerBtn, relay5 && styles.powerBtnActive]}
