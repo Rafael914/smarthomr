@@ -68,6 +68,25 @@ export const applySmsRelayCommand = async ({ relay, enabled, sender }) => {
     return relayState;
 };
 
+export const applySmsAllRelayCommand = async ({ enabled, sender }) => {
+    const relays = relayKeys.filter((key) => key.startsWith("relay"));
+    const changedRelays = relays.filter((relay) => relayState[relay] !== enabled);
+    const nextState = { ...relayState };
+    for (const relay of relays) nextState[relay] = enabled;
+
+    await persistRelayState(nextState);
+    relayState = nextState;
+
+    for (const relay of changedRelays) {
+        await recordRelayAuditEvent({
+            user: { id: null, name: "TextBee SMS", email: sender },
+            relay,
+            action: enabled ? "ON" : "OFF",
+        });
+    }
+    return relayState;
+};
+
 export const getRelayState = async (req, res) => {
     try {
         const rows = await sql`SELECT state FROM relay_state WHERE id = 1`;

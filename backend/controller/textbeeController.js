@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { applySmsRelayCommand } from "./relayController.js";
+import { applySmsAllRelayCommand, applySmsRelayCommand } from "./relayController.js";
 
 const MAX_SIGNATURE_AGE_SECONDS = 300;
 
@@ -64,19 +64,19 @@ export const receiveTextbeeWebhook = async (req, res) => {
     }
 
     const command = String(event.message || "").trim().toLowerCase().replace(/\s+/g, "");
-    const match = command.match(/^relay([1-5]):(on|off)$/);
+    const match = command.match(/^relay(?:([1-5]):|:(all):)(on|off)$/);
     if (!match) {
         return res.status(200).json({ success: true, ignored: "invalid command" });
     }
 
-    const [, relayNumber, action] = match;
+    const [, relayNumber, allRelays, action] = match;
     try {
-        const state = await applySmsRelayCommand({
-            relay: `relay${relayNumber}`,
-            enabled: action === "on",
-            sender,
-        });
-        console.log(`[TextBee SMS] ${sender} set relay${relayNumber} ${action.toUpperCase()}`);
+        const enabled = action === "on";
+        const state = allRelays
+            ? await applySmsAllRelayCommand({ enabled, sender })
+            : await applySmsRelayCommand({ relay: `relay${relayNumber}`, enabled, sender });
+        const target = allRelays ? "all relays" : `relay${relayNumber}`;
+        console.log(`[TextBee SMS] ${sender} set ${target} ${action.toUpperCase()}`);
         return res.status(200).json({ success: true, data: state });
     } catch (error) {
         console.error("Failed to apply TextBee relay command:", error);
